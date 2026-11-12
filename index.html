@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="es-CL">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ARCANA — Tarot interactivo</title>
+<meta name="description" content="Las cartas cuentan historias. Vive una lectura de tarot interactiva, simbólica y reflexiva, gratis y sin registrarte.">
+<meta name="theme-color" content="#101326">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css?v=4">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+
+<header class="barra">
+  <button class="marca" type="button" data-ir="inicio" aria-label="ARCANA, ir al inicio">ARCANA</button>
+  <nav aria-label="Principal">
+    <button type="button" class="enlace" data-ir="espacio">Mi espacio</button>
+    <button type="button" class="enlace" id="btnSonido" aria-pressed="false">Sonido: no</button>
+  </nav>
+</header>
+
+<main id="contenido">
+
+  <!-- INICIO -->
+  <section class="vista" id="v-inicio">
+    <div class="hero">
+      <div class="hero-texto">
+        <p class="sobre">Tarot interactivo</p>
+        <h1 tabindex="-1">Las cartas cuentan historias.<br><em>Descubre lo que pueden inspirar en la tuya.</em></h1>
+        <p class="bajada">Elige un mazo, baraja y escoge tus cartas con tus propias manos. Una lectura simbólica para detenerte a pensar, desde tu celular y a tu ritmo.</p>
+        <div class="acciones">
+          <button type="button" class="btn primario" data-ir="mazo">Comenzar mi lectura</button>
+          <button type="button" class="btn" data-ir="mazo">Explorar mazos</button>
+        </div>
+        <p class="nota">Gratis · Sin registro · Sin entregar datos personales</p>
+      </div>
+      <div class="hero-cartas" id="heroCartas" aria-hidden="true"></div>
+    </div>
+
+    <div class="como">
+      <h2>Cómo funciona</h2>
+      <ol class="pasos">
+        <li><span>1</span><div><h3>Elige tu mazo</h3><p>Cada mazo tiene su propio carácter visual. El significado de las cartas es el mismo.</p></div></li>
+        <li><span>2</span><div><h3>Baraja y escoge</h3><p>El orden queda definido al azar cuando barajas, antes de que elijas. Tú decides qué cartas tomar.</p></div></li>
+        <li><span>3</span><div><h3>Lee y reflexiona</h3><p>Cada carta se interpreta según su posición, y juntas forman una historia con preguntas para ti.</p></div></li>
+      </ol>
+    </div>
+
+    <div class="planes">
+      <h2>Lo que viene</h2>
+      <p class="bajada centro">Esta es una demostración. Hoy puedes hacer lecturas gratuitas con los arcanos mayores. Lo demás está en preparación y todavía no se puede comprar.</p>
+      <ul class="plan-lista">
+        <li><h3>Hoy</h3><p class="precio">Gratis</p><p>Una carta o tres cartas, dos mazos, interpretación breve y diario en tu dispositivo.</p></li>
+        <li><h3>Lectura profunda</h3><p class="precio">Próximamente</p><p>Tiradas más amplias con interpretación personalizada según tu pregunta.</p></li>
+        <li><h3>Premium</h3><p class="precio">Próximamente</p><p>Mazos exclusivos, mazo completo de 78 cartas, historial en tu cuenta y estilos de lectura.</p></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- MAZO -->
+  <section class="vista" id="v-mazo" hidden>
+    <div class="cabecera"><button type="button" class="volver" data-ir="inicio">← Volver</button><p class="paso">Paso 1 de 5</p></div>
+    <h2 tabindex="-1">Elige tu mazo</h2>
+    <p class="bajada">Cambia la ilustración, no el significado.</p>
+    <div class="mazos" id="listaMazos"></div>
+  </section>
+
+  <!-- INTENCIÓN -->
+  <section class="vista estrecha" id="v-intencion" hidden>
+    <div class="cabecera"><button type="button" class="volver" data-ir="mazo">← Volver</button><p class="paso">Paso 2 de 5</p></div>
+    <h2 tabindex="-1">¿Qué quieres explorar?</h2>
+    <p class="bajada">Piensa en aquello que quieres explorar. No necesitas encontrar las palabras perfectas.</p>
+    <div class="chips" id="listaTemas" role="radiogroup" aria-label="Tema de la lectura"></div>
+    <label class="campo" for="pregunta">Tu pregunta <span>(opcional)</span></label>
+    <textarea id="pregunta" rows="3" maxlength="240" placeholder="Por ejemplo: ¿qué necesito mirar antes de decidir?"></textarea>
+    <p class="nota izq">Tu pregunta se queda en este dispositivo. No se envía a ningún servidor.</p>
+    <div class="acciones"><button type="button" class="btn primario" data-ir="tirada">Continuar</button></div>
+  </section>
+
+  <!-- TIRADA -->
+  <section class="vista" id="v-tirada" hidden>
+    <div class="cabecera"><button type="button" class="volver" data-ir="intencion">← Volver</button><p class="paso">Paso 3 de 5</p></div>
+    <h2 tabindex="-1">Elige tu tirada</h2>
+    <p class="bajada">Cada posición tiene un significado definido antes de empezar.</p>
+    <div class="tiradas" id="listaTiradas"></div>
+  </section>
+
+  <!-- BARAJAR -->
+  <section class="vista estrecha centro" id="v-barajar" hidden>
+    <div class="cabecera"><button type="button" class="volver" data-ir="tirada">← Volver</button><p class="paso">Paso 4 de 5</p></div>
+    <h2 tabindex="-1">Baraja el mazo</h2>
+    <p class="bajada">Toca el mazo las veces que quieras. Cada vez, las 22 cartas se reordenan al azar.</p>
+    <button type="button" class="pila" id="pila" aria-label="Barajar el mazo"></button>
+    <p class="estado" id="estadoBarajar" aria-live="polite">El mazo ya está mezclado al azar.</p>
+    <div class="acciones">
+      <button type="button" class="btn" id="btnBarajar">Barajar</button>
+      <button type="button" class="btn primario" id="btnRepartir">Repartir las cartas</button>
+    </div>
+  </section>
+
+  <!-- ELEGIR -->
+  <section class="vista" id="v-elegir" hidden>
+    <div class="cabecera"><button type="button" class="volver" data-ir="barajar">← Volver</button><p class="paso">Paso 5 de 5</p></div>
+    <h2 tabindex="-1" id="tituloElegir">Elige tus cartas</h2>
+    <p class="estado" id="estadoElegir" aria-live="polite"></p>
+    <div class="mesa" id="mesa"></div>
+    <div class="acciones fija">
+      <button type="button" class="btn primario" id="btnConfirmar" disabled>Confirmar elección</button>
+    </div>
+  </section>
+
+  <!-- LECTURA -->
+  <section class="vista" id="v-lectura" hidden>
+    <h2 tabindex="-1" id="tituloLectura">Tu lectura</h2>
+    <p class="estado" id="estadoLectura" aria-live="polite"></p>
+    <div class="ranuras" id="ranuras"></div>
+    <div class="acciones" id="accionesRevelar">
+      <button type="button" class="btn" id="btnRevelarTodas">Revelar todas</button>
+    </div>
+    <div class="interpretacion" id="interpretacion" hidden></div>
+  </section>
+
+  <!-- MI ESPACIO -->
+  <section class="vista estrecha" id="v-espacio" hidden>
+    <div class="cabecera"><button type="button" class="volver" data-ir="inicio">← Volver</button></div>
+    <h2 tabindex="-1">Mi espacio</h2>
+    <p class="bajada">Tus lecturas guardadas viven solo en este dispositivo. Puedes borrarlas cuando quieras.</p>
+    <div id="historial"></div>
+  </section>
+</main>
+
+<footer class="pie">
+  <p>ARCANA ofrece interpretaciones simbólicas para la reflexión personal y el entretenimiento. No predice el futuro ni reemplaza el consejo médico, legal, financiero o psicológico.</p>
+  <p class="tenue">Demostración · Ilustraciones originales</p>
+</footer>
+
+<div class="aviso" id="aviso" role="status" aria-live="polite"></div>
+
+<script src="cards.js?v=4"></script>
+<script src="app.js?v=4"></script>
+</body>
+</html>
