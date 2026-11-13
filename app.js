@@ -145,7 +145,31 @@
   });
 
   /* ---------- inicio ---------- */
-  $('#heroCartas').innerHTML = [2, 17, 0, 19, 1].map((i) => carta(cara(i, 'rws', false), 'rws')).join('');
+  $('#heroCartas').innerHTML = [18, 17, 19].map((i) => carta(cara(i, 'rws', false), 'rws')).join('');
+
+  /* Astrolabio: círculos, marcas y una constelación trazada. */
+  function astrolabio(n, marcas, puntos) {
+    let s = '<svg viewBox="-100 -100 200 200" fill="none" stroke="currentColor" stroke-width=".35" aria-hidden="true">';
+    s += '<circle r="99"/><circle r="92" stroke-dasharray="1 2.4"/><circle r="78" opacity=".6"/>';
+    for (let i = 0; i < marcas; i++) {
+      const a = (i * 2 * Math.PI) / marcas, l = i % (marcas / n) === 0 ? 92 : 96;
+      s += `<line x1="${(99 * Math.cos(a)).toFixed(2)}" y1="${(99 * Math.sin(a)).toFixed(2)}" x2="${(l * Math.cos(a)).toFixed(2)}" y2="${(l * Math.sin(a)).toFixed(2)}"/>`;
+    }
+    for (let i = 0; i < n; i++) {
+      const a = (i * 2 * Math.PI) / n;
+      s += `<line x1="${(78 * Math.cos(a)).toFixed(2)}" y1="${(78 * Math.sin(a)).toFixed(2)}" x2="${(92 * Math.cos(a)).toFixed(2)}" y2="${(92 * Math.sin(a)).toFixed(2)}" opacity=".7"/>`;
+    }
+    let d = '';
+    puntos.forEach(([r, g], i) => {
+      const a = (g * Math.PI) / 180, x = (r * Math.cos(a)).toFixed(1), y = (r * Math.sin(a)).toFixed(1);
+      d += (i ? 'L' : 'M') + x + ' ' + y;
+      s += `<circle cx="${x}" cy="${y}" r="${i % 3 ? 0.9 : 1.6}" fill="currentColor" stroke="none"/>`;
+    });
+    return s + `<path d="${d}" opacity=".55"/></svg>`;
+  }
+  const CIELO1 = astrolabio(12, 72, [[85, 10], [70, 34], [86, 62], [66, 95], [84, 130], [72, 168], [87, 205], [68, 248], [85, 290], [71, 330]]);
+  const CIELO2 = astrolabio(8, 48, [[60, 20], [88, 80], [58, 140], [86, 200], [62, 265], [88, 320]]);
+  $$('.rueda').forEach((el) => { el.innerHTML = el.classList.contains('dos') ? CIELO2 : CIELO1; });
   $('#vitrina').innerHTML = MAZOS.filter((m) => !m.pendiente).map((m) =>
     `<li class="vit tema-${m.id}"><span class="abanico" aria-hidden="true">${m.muestra.slice(0, 3).map((i) => carta(cara(i, m.id), m.id)).join('')}</span>
       <p class="precio">${m.anio} · ${m.lugar}</p><h3>${m.nombre}</h3><p>${m.tecnica}. 78 cartas.</p></li>`).join('');

@@ -8,8 +8,8 @@
 <meta name="theme-color" content="#101326">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=6">
+<link href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,300;0,400;0,500;1,300&family=Marcellus&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css?v=7">
 </head>
 <body>
 <a class="salto" href="#contenido">Saltar al contenido</a>
@@ -27,17 +27,17 @@
   <!-- INICIO -->
   <section class="vista" id="v-inicio">
     <div class="hero">
-      <div class="hero-texto">
-        <p class="sobre">Tarot interactivo · Tres mazos históricos</p>
-        <h1 tabindex="-1">Las cartas cuentan historias.<br><em>Descubre lo que pueden inspirar en la tuya.</em></h1>
-        <p class="bajada">Lee con mazos reales de 1491, 1701 y 1909, completos, con sus 78 cartas. Baraja, escoge con tus propias manos y recibe una lectura simbólica para detenerte a pensar.</p>
-        <div class="acciones">
-          <button type="button" class="btn primario" data-ir="mazo">Comenzar mi lectura</button>
-          <button type="button" class="btn" data-ir="mazo">Explorar mazos</button>
-        </div>
-        <p class="nota">Gratis · Sin registro · Sin entregar datos personales</p>
+      <h1 tabindex="-1">Las cartas cuentan historias</h1>
+      <p class="bajada">Descubre lo que pueden inspirar en la tuya. Lee con mazos reales de 1491, 1701 y 1909, completos, con sus 78 cartas.</p>
+      <div class="cielo" aria-hidden="true">
+        <div class="rueda"></div><div class="rueda dos"></div>
+        <div class="trio" id="heroCartas"></div>
       </div>
-      <div class="hero-cartas" id="heroCartas" aria-hidden="true"></div>
+      <div class="acciones">
+        <button type="button" class="btn primario" data-ir="mazo">Comenzar mi lectura</button>
+        <button type="button" class="btn" data-ir="mazo">Explorar mazos</button>
+      </div>
+      <p class="nota">Gratis, sin registro y sin entregar datos personales</p>
     </div>
 
     <div class="seccion">
@@ -72,7 +72,7 @@
 
   <!-- MAZO -->
   <section class="vista" id="v-mazo" hidden>
-    <div class="cabecera"><button type="button" class="volver" data-ir="inicio">← Volver</button><p class="paso">Paso 1 de 5</p></div>
+    <div class="cabecera"><button type="button" class="volver" data-ir="inicio">← Volver</button><p class="paso"><span class="lunas" aria-hidden="true"><i class="actual"></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span><span class="sr">Paso 1 de 5</span></p></div>
     <h2 tabindex="-1">Elige tu mazo</h2>
     <p class="bajada">Tres obras históricas, cada una con sus 78 cartas originales. Cambia la imagen, no el significado.</p>
     <div class="mazos" id="listaMazos"></div>
@@ -80,7 +80,7 @@
 
   <!-- INTENCIÓN -->
   <section class="vista estrecha" id="v-intencion" hidden>
-    <div class="cabecera"><button type="button" class="volver" data-ir="mazo">← Volver</button><p class="paso">Paso 2 de 5</p></div>
+    <div class="cabecera"><button type="button" class="volver" data-ir="mazo">← Volver</button><p class="paso"><span class="lunas" aria-hidden="true"><i class="llena"></i><i class="actual"></i><i class=""></i><i class=""></i><i class=""></i></span><span class="sr">Paso 2 de 5</span></p></div>
     <h2 tabindex="-1">¿Qué quieres explorar?</h2>
     <p class="bajada">Piensa en aquello que quieres explorar. No necesitas encontrar las palabras perfectas.</p>
     <div class="chips" id="listaTemas" role="radiogroup" aria-label="Tema de la lectura"></div>
@@ -92,7 +92,7 @@
 
   <!-- TIRADA -->
   <section class="vista" id="v-tirada" hidden>
-    <div class="cabecera"><button type="button" class="volver" data-ir="intencion">← Volver</button><p class="paso">Paso 3 de 5</p></div>
+    <div class="cabecera"><button type="button" class="volver" data-ir="intencion">← Volver</button><p class="paso"><span class="lunas" aria-hidden="true"><i class="llena"></i><i class="llena"></i><i class="actual"></i><i class=""></i><i class=""></i></span><span class="sr">Paso 3 de 5</span></p></div>
     <h2 tabindex="-1">Elige tu tirada</h2>
     <p class="bajada">Cada posición tiene un significado definido antes de empezar.</p>
     <div class="tiradas" id="listaTiradas"></div>
@@ -100,10 +100,10 @@
 
   <!-- BARAJAR -->
   <section class="vista estrecha centro" id="v-barajar" hidden>
-    <div class="cabecera"><button type="button" class="volver" data-ir="tirada">← Volver</button><p class="paso">Paso 4 de 5</p></div>
+    <div class="cabecera"><button type="button" class="volver" data-ir="tirada">← Volver</button><p class="paso"><span class="lunas" aria-hidden="true"><i class="llena"></i><i class="llena"></i><i class="llena"></i><i class="actual"></i><i class=""></i></span><span class="sr">Paso 4 de 5</span></p></div>
     <h2 tabindex="-1">Baraja el mazo</h2>
     <p class="bajada">Toca el mazo las veces que quieras. Cada vez, las 78 cartas se reordenan al azar.</p>
-    <button type="button" class="pila" id="pila" aria-label="Barajar el mazo"></button>
+    <div class="orbita"><div class="rueda" aria-hidden="true"></div><button type="button" class="pila" id="pila" aria-label="Barajar el mazo"></button></div>
     <p class="estado" id="estadoBarajar" aria-live="polite">El mazo ya está mezclado al azar.</p>
     <div class="acciones">
       <button type="button" class="btn" id="btnBarajar">Barajar</button>
@@ -113,7 +113,7 @@
 
   <!-- ELEGIR -->
   <section class="vista" id="v-elegir" hidden>
-    <div class="cabecera"><button type="button" class="volver" data-ir="barajar">← Volver</button><p class="paso">Paso 5 de 5</p></div>
+    <div class="cabecera"><button type="button" class="volver" data-ir="barajar">← Volver</button><p class="paso"><span class="lunas" aria-hidden="true"><i class="llena"></i><i class="llena"></i><i class="llena"></i><i class="llena"></i><i class="actual"></i></span><span class="sr">Paso 5 de 5</span></p></div>
     <h2 tabindex="-1" id="tituloElegir">Elige tus cartas</h2>
     <p class="estado" id="estadoElegir" aria-live="polite"></p>
     <div class="tapete"><div class="mesa" id="mesa"></div></div>
@@ -126,7 +126,7 @@
   <section class="vista" id="v-lectura" hidden>
     <h2 tabindex="-1" id="tituloLectura">Tu lectura</h2>
     <p class="estado" id="estadoLectura" aria-live="polite"></p>
-    <div class="ranuras" id="ranuras"></div>
+    <div class="orbita ancha"><div class="rueda" aria-hidden="true"></div><div class="ranuras" id="ranuras"></div></div>
     <div class="acciones" id="accionesRevelar">
       <button type="button" class="btn" id="btnRevelarTodas">Revelar todas</button>
     </div>
@@ -155,8 +155,8 @@
 
 <div class="aviso" id="aviso" role="status" aria-live="polite"></div>
 
-<script src="cards.js?v=6"></script>
-<script src="menores.js?v=6"></script>
-<script src="app.js?v=6"></script>
+<script src="cards.js?v=7"></script>
+<script src="menores.js?v=7"></script>
+<script src="app.js?v=7"></script>
 </body>
 </html>
