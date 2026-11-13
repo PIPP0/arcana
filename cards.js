@@ -1,5 +1,4 @@
-/* ARCANA — cartas, textos e ilustraciones.
-   Las ilustraciones son originales: se dibujan aquí, en código (SVG). */
+/* ARCANA — los 22 arcanos mayores (textos) y el reverso dibujado. */
 (function () {
   'use strict';
 
@@ -138,86 +137,20 @@
     }
     return s;
   };
-  const lemn = (y) => p(`M60 ${y} c-6 -8 -18 -8 -18 0 s12 8 18 0 s18 -8 18 0 s-12 8 -18 0`);
-  const ondas = (x, y, n) => p(`M${x} ${y} q5 -4 10 0` + ' t10 0'.repeat(n - 1));
+  const svg = (inner) =>
+    `<svg viewBox="0 0 120 180" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" preserveAspectRatio="none">` +
+    `<rect class="cb" x="0" y="0" width="120" height="180"/>` +
+    `<rect class="ln" x="6" y="6" width="108" height="168" rx="3"/>` + inner + '</svg>';
 
-  /* ---------- un dibujo por arcano ---------- */
-  const DIBUJOS = [
-    /* 0 El Loco */ () => p('M18 128 H64 V142') + p('M22 122 Q40 82 60 96', 'ln ds') + c(72, 90, 9) +
-      c(88, 54, 8) + rays(88, 54, 12, 17, 8) + star(36, 58, 5, 1.8, 4, 'fl'),
-    /* I El Mago */ () => lemn(50) + l(60, 64, 60, 106) + c(60, 62, 2, 'fl') + l(28, 118, 92, 118) + l(36, 118, 36, 134) + l(84, 118, 84, 134) +
-      c(38, 110, 4) + p('M46 114 l4 -8 l4 8 z') + p('M68 106 h8 v8 h-8 z') + l(86, 106, 86, 114) + l(82, 110, 90, 110),
-    /* II La Sacerdotisa */ () => p('M28 50 h12 v86 h-12 z') + p('M80 50 h12 v86 h-12 z') + p('M68 70 A14 14 0 1 0 68 96 A15 15 0 0 1 68 70 z', 'fl') +
-      p('M40 56 Q60 42 80 56') + ondas(40, 124, 4) + c(60, 110, 1.6, 'fl'),
-    /* III La Emperatriz */ () => {
-      let s = '';
-      for (let a = 0; a < 360; a += 60) s += `<ellipse class="ln" cx="60" cy="80" rx="6" ry="13" transform="rotate(${a} 60 93)"/>`;
-      return s + c(60, 93, 4, 'fl') + star(44, 54, 3.4, 1.3, 4, 'fl') + star(60, 47, 4.2, 1.6, 4, 'fl') + star(76, 54, 3.4, 1.3, 4, 'fl') + p('M32 138 Q60 126 88 138');
-    },
-    /* IV El Emperador */ () => p('M34 68 h52 v52 h-52 z') + p('M34 120 L50 92 L60 106 L72 84 L86 120') +
-      p('M44 60 V46 L52 54 L60 42 L68 54 L76 46 V60 z') + l(28, 128, 92, 128) + l(36, 134, 84, 134),
-    /* V El Sumo Sacerdote */ () => l(60, 42, 60, 136) + l(50, 56, 70, 56) + l(44, 70, 76, 70) + l(38, 84, 82, 84) +
-      c(36, 122, 6) + c(84, 122, 6) + p('M40 117 Q60 98 80 117') + c(60, 42, 2, 'fl'),
-    /* VI Los Enamorados */ () => c(49, 100, 21) + c(71, 100, 21) + c(60, 52, 7) + rays(60, 52, 11, 16, 12) + c(60, 100, 2.2, 'fl'),
-    /* VII El Carro */ () => p('M38 70 h44 v36 h-44 z') + p('M32 70 Q60 46 88 70') + star(60, 88, 10, 4, 8) +
-      c(44, 120, 10) + c(76, 120, 10) + c(44, 120, 2, 'fl') + c(76, 120, 2, 'fl') + l(24, 134, 96, 134),
-    /* VIII La Fuerza */ () => lemn(50) + c(60, 100, 15) + rays(60, 100, 19, 28, 18) + star(60, 100, 6, 2.4, 4, 'fl'),
-    /* IX El Ermitaño */ () => l(38, 46, 38, 138) + p('M38 52 Q72 42 72 62') + star(72, 80, 18, 15.6, 3, 'ln', -90) + star(72, 80, 8, 3, 6, 'fl') +
-      p('M54 138 L74 114 L84 126 L90 120 L100 138'),
-    /* X La Rueda */ () => c(60, 90, 34) + c(60, 90, 24) + c(60, 90, 6) + rays(60, 90, 6, 34, 8, 22.5) +
-      c(24, 50, 1.8, 'fl') + c(96, 50, 1.8, 'fl') + c(24, 130, 1.8, 'fl') + c(96, 130, 1.8, 'fl'),
-    /* XI La Justicia */ () => l(60, 48, 60, 132) + c(60, 45, 3) + l(32, 66, 88, 66) + l(32, 66, 23, 92) + l(32, 66, 41, 92) + p('M21 92 Q32 106 43 92 z') +
-      l(88, 66, 79, 92) + l(88, 66, 97, 92) + p('M77 92 Q88 106 99 92 z') + l(46, 132, 74, 132) + l(52, 138, 68, 138),
-    /* XII El Colgado */ () => l(28, 46, 92, 46) + l(34, 46, 34, 60) + l(86, 46, 86, 60) + l(60, 46, 60, 74) + p('M46 74 h28 L60 102 z') +
-      c(60, 114, 7) + rays(60, 114, 10.5, 15, 12),
-    /* XIII La Muerte */ () => l(20, 116, 100, 116) + p('M44 116 A16 16 0 0 1 76 116') + rays(60, 116, 21, 28, 7, 0, 200, 340) +
-      p('M24 116 v-24 h9 v24') + p('M87 116 v-24 h9 v24') + p('M44 78 Q60 40 84 52 Q62 54 50 80 z', 'fl') + l(84, 52, 92, 84) + ondas(25, 130, 7),
-    /* XIV La Templanza */ () => p('M28 54 h22 l-4 18 h-14 z') + p('M70 108 h22 l-4 18 h-14 z') + p('M42 72 C46 96 76 86 80 108') + p('M36 72 C40 102 70 92 74 108', 'ln ds') +
-      p('M72 48 h20 v20 h-20 z') + p('M75 65 l7 -13 l7 13 z') + c(36, 122, 6) + rays(36, 122, 9.5, 14, 8),
-    /* XV El Diablo */ () => {
-      const pts = [];
-      for (let i = 0; i < 5; i++) { const a = (90 + i * 144) * Math.PI / 180; pts.push(f(60 + 27 * Math.cos(a)) + ',' + f(82 + 27 * Math.sin(a))); }
-      return c(60, 82, 27) + `<polygon class="ln" points="${pts.join(' ')}"/>` + c(40, 124, 5.5) + c(49, 129, 5.5) + c(71, 129, 5.5) + c(80, 124, 5.5) + l(54.5, 129, 65.5, 129);
-    },
-    /* XVI La Torre */ () => p('M47 138 V74 h26 V138') + l(60, 86, 60, 95) + l(60, 108, 60, 117) + l(28, 138, 92, 138) +
-      `<g transform="translate(9 -5) rotate(22 60 58)">` + p('M50 66 L48 52 L55 58 L60 48 L65 58 L72 52 L70 66 z') + '</g>' +
-      p('M94 38 L80 58 L88 60 L76 76') + c(34, 92, 2, 'fl') + c(88, 98, 2, 'fl') + c(28, 114, 1.5, 'fl') + c(94, 118, 1.5, 'fl') + c(38, 70, 1.5, 'fl'),
-    /* XVII La Estrella */ () => star(60, 76, 25, 9, 8) + star(60, 42, 3, 1.1, 4, 'fl') + star(28, 52, 3.4, 1.3, 4, 'fl') + star(92, 52, 3.4, 1.3, 4, 'fl') +
-      star(22, 86, 3, 1.1, 4, 'fl') + star(98, 86, 3, 1.1, 4, 'fl') + star(36, 110, 3.4, 1.3, 4, 'fl') + star(84, 110, 3.4, 1.3, 4, 'fl') +
-      ondas(25, 126, 7) + ondas(35, 135, 5),
-    /* XVIII La Luna */ () => c(60, 70, 21) + p('M66 56 A15 15 0 1 0 66 84 A16 16 0 0 1 66 56 z', 'fl') + p('M22 138 v-28 h11 v28') + p('M87 138 v-28 h11 v28') +
-      p('M60 138 C50 126 70 116 60 102', 'ln ds') + c(42, 100, 1.5, 'fl') + c(78, 100, 1.5, 'fl') + c(48, 110, 1.2, 'fl') + c(72, 110, 1.2, 'fl') + l(22, 138, 98, 138),
-    /* XIX El Sol */ () => c(60, 86, 18) + c(60, 86, 9) + rays(60, 86, 23, 38, 8) + rays(60, 86, 23, 31, 8, 22.5) + l(24, 136, 96, 136) + l(36, 141, 84, 141),
-    /* XX El Juicio */ () => p('M88 40 L54 62 L66 78 z') + c(90, 38, 2.4, 'fl') + l(55, 72, 40, 90) + l(60, 78, 52, 98) + l(50, 66, 32, 78) +
-      p('M26 134 v-10 a8 8 0 0 1 16 0 v10') + p('M52 134 v-10 a8 8 0 0 1 16 0 v10') + p('M78 134 v-10 a8 8 0 0 1 16 0 v10') + l(20, 134, 100, 134) +
-      l(34, 110, 34, 104) + l(60, 110, 60, 104) + l(86, 110, 86, 104),
-    /* XXI El Mundo */ () => `<ellipse class="ln" cx="60" cy="90" rx="26" ry="38"/><ellipse class="ln ds" cx="60" cy="90" rx="21" ry="33"/>` +
-      star(60, 90, 10, 3.6, 4, 'fl') + c(26, 50, 3) + p('M90 53 l4 -7 l4 7 z') + p('M23 127 h6 v6 h-6 z') + star(94, 130, 4.4, 1.7, 4, 'fl')
-  ];
-
-  const svg = (inner, label) =>
-    `<svg viewBox="0 0 120 180" xmlns="http://www.w3.org/2000/svg" ${label ? `role="img" aria-label="${label}"` : 'aria-hidden="true"'}>` +
-    `<rect class="cb" x="1" y="1" width="118" height="178" rx="8"/>` +
-    `<rect class="ln" x="6" y="6" width="108" height="168" rx="5"/>` + inner + '</svg>';
-
-  function cara(i) {
-    const k = CARTAS[i];
-    return svg(
-      `<rect class="ln fino" x="10" y="10" width="100" height="160" rx="3"/>` +
-      `<text class="tx num" x="60" y="29" text-anchor="middle">${k.n}</text>` +
-      DIBUJOS[i]() +
-      `<text class="tx nom" x="60" y="161" text-anchor="middle"${k.nombre.length > 17 ? ' textLength="92" lengthAdjust="spacingAndGlyphs"' : ''}>${k.nombre.toUpperCase()}</text>`,
-      k.nombre);
-  }
-
+  /* Reverso dibujado: se usa en el mazo que no conserva un reverso original. */
   function reverso() {
-    let s = `<rect class="ln fino" x="10" y="10" width="100" height="160" rx="3"/>`;
-    s += p('M60 22 L102 90 L60 158 L18 90 z') + p('M60 40 L90 90 L60 140 L30 90 z', 'ln fino');
-    s += c(60, 90, 20) + star(60, 90, 16, 6, 8, 'fl') + c(60, 90, 26, 'ln ds');
-    [[20, 20], [100, 20], [20, 160], [100, 160]].forEach(([x, y]) => { s += star(x, y, 4, 1.5, 4, 'fl'); });
-    s += c(60, 30, 1.4, 'fl') + c(60, 150, 1.4, 'fl');
-    return svg(s, '');
+    let s = `<rect class="ln fino" x="10" y="10" width="100" height="160" rx="2"/>`;
+    for (let y = 22; y <= 158; y += 17) for (let x = 20; x <= 100; x += 16) s += p(`M${x} ${y - 6} l5 6 l-5 6 l-5 -6 z`, 'ln fino');
+    s += `<rect class="cb" x="28" y="52" width="64" height="76" rx="32"/>`;
+    s += c(60, 90, 30) + c(60, 90, 26, 'ln ds') + star(60, 90, 22, 8, 8) + star(60, 90, 12, 4.5, 8, 'fl') + rays(60, 90, 23, 26, 16, 11.25);
+    [[18, 18], [102, 18], [18, 162], [102, 162]].forEach(([x, y]) => { s += star(x, y, 5, 1.8, 4, 'fl'); });
+    return svg(s);
   }
 
-  window.ARCANA_DATA = { CARTAS, cara, reverso };
+  window.ARCANA_DATA = { CARTAS, reversoDibujado: reverso };
 })();

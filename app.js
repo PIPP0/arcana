@@ -1,17 +1,35 @@
 /* ARCANA — demo de validación. Todo ocurre en el dispositivo: sin servidor, sin analítica. */
 (function () {
   'use strict';
-  const { CARTAS, cara, reverso } = window.ARCANA_DATA;
+  const { CARTAS, reversoDibujado } = window.ARCANA_DATA;
+  const TOTAL = CARTAS.length; // 78
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
   const esc = (t) => String(t).replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
   const CLAVE = 'arcana.lecturas.v1';
 
+  /* ---------- mazos históricos (imágenes de dominio público) ---------- */
   const MAZOS = [
-    { id: 'aureo', nombre: 'Áureo', desc: 'Trazos dorados sobre azul de medianoche. Sobrio y nocturno.', libre: true },
-    { id: 'marfil', nombre: 'Marfil', desc: 'Tinta oscura sobre papel marfil. Claro, limpio y editorial.', libre: true },
-    { id: 'botanico', nombre: 'Botánico', desc: 'Verde profundo y tonos de herbario. En preparación.', libre: false }
+    { id: 'rws', nombre: 'Rider-Waite-Smith', anio: '1909', lugar: 'Londres',
+      tecnica: 'Ilustración a tinta y color', muestra: [1, 17, 0, 36, 19],
+      desc: 'El mazo más influyente del siglo XX, dibujado por Pamela Colman Smith. Fue el primero en ilustrar con escenas completas las 78 cartas, incluidos los arcanos menores.',
+      credito: 'Edición original de 1909 («Roses & Lilies»). Ilustraciones de Pamela Colman Smith.' },
+    { id: 'dodal', nombre: 'Tarot de Marsella', anio: 'c. 1701', lugar: 'Lyon',
+      tecnica: 'Xilografía coloreada a mano', muestra: [1, 13, 0, 64, 19],
+      desc: 'La tradición de Marsella en una de sus versiones más antiguas, tallada en madera por el maestro cartero Jean Dodal. Trazo rudo, colores planos y arcanos menores de palos, sin escenas.',
+      credito: 'Mazo de Jean Dodal, Lyon, c. 1701–1715.',
+      nombres: ['Le Mat', 'Le Bateleur', 'La Papesse', 'L’Impératrice', 'L’Empereur', 'Le Pape', 'L’Amoureux', 'Le Chariot', 'La Force', 'L’Hermite', 'La Roue de Fortune',
+        'La Justice', 'Le Pendu', 'el arcano sin nombre', 'Tempérance', 'Le Diable', 'La Maison Dieu', 'L’Étoile', 'La Lune', 'Le Soleil', 'Le Jugement', 'Le Monde'],
+      numeros: { 8: 'XI', 11: 'VIII' } },
+    { id: 'sola', nombre: 'Sola-Busca', anio: '1491', lugar: 'Ferrara · Venecia',
+      tecnica: 'Grabado en cobre iluminado', muestra: [1, 16, 0, 57, 21],
+      desc: 'El mazo completo de 78 cartas más antiguo que se conserva. Grabado renacentista cuyos arcanos mayores son guerreros y personajes de la Antigüedad, y cuyos menores ya traen escenas.',
+      credito: 'Tarot Sola-Busca, c. 1491. Pinacoteca di Brera, Milán.',
+      nombres: ['Mato', 'Panfilio', 'Postumio', 'Lenpio', 'Mario', 'Catulo', 'Sesto', 'Deo Tauro', 'Nerone', 'Falco', 'Venturio',
+        'Tulio', 'Carbone', 'Catone', 'Bocho', 'Metelo', 'Olivo', 'Ipeo', 'Lentulo', 'Sabino', 'Nenbroto', 'Nabuchodenasor'],
+      propios: true, pendiente: true }
   ];
+  const mazoDe = (id) => MAZOS.find((m) => m.id === id) || MAZOS[0];
 
   const TEMAS = [
     { id: 'general', nombre: 'Reflexión general', intro: 'Esta lectura es una pausa para mirar el momento que estás viviendo.',
@@ -53,24 +71,36 @@
     posibilidad: (k) => `Hacia dónde podrías mirar. ${k.luz}`
   };
 
-  const estado = { mazo: 'aureo', tema: 'general', pregunta: '', tirada: null, orden: [], elegidas: [], reveladas: new Set(), guardada: false };
+  const estado = { mazo: 'rws', tema: 'general', pregunta: '', tirada: null, orden: [], elegidas: [], reveladas: new Set(), guardada: false };
 
   /* ---------- utilidades ---------- */
   function barajar() {
     // Fisher–Yates con azar criptográfico. El orden queda fijo antes de que la persona elija.
     const a = CARTAS.map((_, i) => i), buf = new Uint32Array(1);
     for (let i = a.length - 1; i > 0; i--) {
-      let j;
       const lim = Math.floor(0x100000000 / (i + 1)) * (i + 1);
       do { crypto.getRandomValues(buf); } while (buf[0] >= lim);
-      j = buf[0] % (i + 1);
+      const j = buf[0] % (i + 1);
       [a[i], a[j]] = [a[j], a[i]];
     }
     estado.orden = a;
   }
-  const carta = (html, cls = '') => `<span class="carta ${cls}">${html}</span>`;
+  const src = (mazo, i) => `img/${mazo}/${String(i).padStart(2, '0')}.webp`;
+  const cara = (i, mazo, lazy = true) =>
+    `<img src="${src(mazo, i)}" alt="${esc(CARTAS[i].nombre)}" ${lazy ? 'loading="lazy"' : ''} decoding="async" draggable="false">`;
+  const reverso = (mazo) => (mazo === 'sola' ? reversoDibujado() : `<img src="img/${mazo}/back.webp" alt="" decoding="async" draggable="false">`);
+  const carta = (html, mazo, cls = '') => `<span class="carta c-${mazo} ${cls}">${html}</span>`;
   const de = (t) => (t.startsWith('el ') ? 'del ' + t.slice(3) : 'de ' + t);
   const lista = (arr) => (arr.length < 2 ? arr.join('') : arr.slice(0, -1).join(', ') + ' y ' + arr[arr.length - 1]);
+  const numero = (i, mazo) => { const m = mazoDe(mazo); return (m.numeros && m.numeros[i]) || CARTAS[i].n; };
+  // Nombre que la carta lleva en ese mazo, cuando difiere del nombre con que se lee.
+  const propio = (i, mazo) => { const m = mazoDe(mazo); return i < 22 && m.nombres ? m.nombres[i] : ''; };
+  function notaMazo(i, mazo) {
+    const m = mazoDe(mazo), n = propio(i, mazo);
+    if (!n) return '';
+    if (m.propios) return `En el Sola-Busca este arcano es «${n}», un personaje propio del mazo. Se lee según su lugar en la serie: ${CARTAS[i].nombre}.`;
+    return i === 13 ? 'En el Tarot de Marsella este arcano no lleva nombre escrito.' : `En el Tarot de Marsella: «${n}».`;
+  }
 
   let tAviso;
   function aviso(t) {
@@ -99,14 +129,13 @@
   });
 
   /* ---------- navegación ---------- */
+  const CON_TEMA = ['intencion', 'tirada', 'barajar', 'elegir', 'lectura'];
   function ir(id, foco = true) {
     if (id === 'tirada') estado.pregunta = $('#pregunta').value.trim();
     if (id === 'barajar') prepararBarajar();
     if (id === 'espacio') pintarHistorial();
     $$('.vista').forEach((v) => { v.hidden = v.id !== 'v-' + id; });
-    document.body.classList.toggle('con-fija', id === 'elegir');
-    document.body.className = document.body.className.replace(/mazo-\w+/g, '').trim();
-    document.body.classList.add('mazo-' + estado.mazo);
+    document.body.className = (CON_TEMA.includes(id) ? 'tema-' + estado.mazo : '') + (id === 'elegir' ? ' con-fija' : '');
     window.scrollTo(0, 0);
     if (foco) { const h = $('#v-' + id + ' h1, #v-' + id + ' h2'); if (h) h.focus({ preventScroll: true }); }
   }
@@ -116,17 +145,22 @@
   });
 
   /* ---------- inicio ---------- */
-  $('#heroCartas').innerHTML = [17, 19, 18].map((i) => carta(cara(i), 'mazo-aureo')).join('');
+  $('#heroCartas').innerHTML = [2, 17, 0, 19, 1].map((i) => carta(cara(i, 'rws', false), 'rws')).join('');
+  $('#vitrina').innerHTML = MAZOS.filter((m) => !m.pendiente).map((m) =>
+    `<li class="vit tema-${m.id}"><span class="abanico" aria-hidden="true">${m.muestra.slice(0, 3).map((i) => carta(cara(i, m.id), m.id)).join('')}</span>
+      <p class="precio">${m.anio} · ${m.lugar}</p><h3>${m.nombre}</h3><p>${m.tecnica}. 78 cartas.</p></li>`).join('');
 
   /* ---------- mazos ---------- */
-  $('#listaMazos').innerHTML = MAZOS.map((m) =>
-    `<button type="button" class="mazo mazo-${m.id}" data-mazo="${m.id}" ${m.libre ? '' : 'disabled aria-disabled="true"'}>
-      <span class="muestra" aria-hidden="true">${carta(reverso())}${carta(cara(m.id === 'marfil' ? 2 : m.id === 'botanico' ? 3 : 17))}</span>
-      <span><h3>${m.nombre}</h3><p>${m.desc}</p><span class="etiqueta">${m.libre ? '22 arcanos mayores · Gratis' : 'Próximamente'}</span></span>
+  $('#listaMazos').innerHTML = MAZOS.map((m) => m.pendiente
+    ? `<div class="mazo tema-${m.id}"><span class="ficha"><span class="precio">${m.anio} · ${m.lugar}</span><h3>${m.nombre}</h3><p>${m.desc}</p><span class="etiqueta">Se está cargando · disponible muy pronto</span></span></div>`
+    : `<button type="button" class="mazo tema-${m.id}" data-mazo="${m.id}">
+      <span class="abanico cinco" aria-hidden="true">${m.muestra.map((i) => carta(cara(i, m.id), m.id)).join('')}</span>
+      <span class="ficha"><span class="precio">${m.anio} · ${m.lugar}</span><h3>${m.nombre}</h3>
+        <p>${m.desc}</p><span class="etiqueta">78 cartas · ${m.tecnica}</span>
+        <span class="elegir">Leer con este mazo →</span></span>
     </button>`).join('');
   $('#listaMazos').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-mazo]');
-    if (!b || b.disabled) return;
+    const b = e.target.closest('[data-mazo]'); if (!b) return;
     estado.mazo = b.dataset.mazo; roce(); ir('intencion');
   });
 
@@ -166,8 +200,9 @@
   function prepararBarajar() {
     barajar(); veces = 0;
     estado.elegidas = []; estado.reveladas = new Set(); estado.guardada = false;
-    $('#pila').innerHTML = Array.from({ length: 7 }, (_, i) =>
-      `<span class="carta" style="--i:${i};--d:${i % 2 ? 1 : -1}">${reverso()}</span>`).join('');
+    const back = reverso(estado.mazo);
+    $('#pila').innerHTML = Array.from({ length: 9 }, (_, i) =>
+      `<span class="carta c-${estado.mazo}" style="--i:${i};--d:${i % 2 ? 1 : -1}">${back}</span>`).join('');
     $('#estadoBarajar').textContent = 'El mazo ya está mezclado al azar.';
   }
   function accionBarajar() {
@@ -184,22 +219,22 @@
     const n = estado.tirada.pos.length;
     estado.elegidas = [];
     $('#tituloElegir').textContent = n === 1 ? 'Elige tu carta' : `Elige tus ${n} cartas`;
-    const back = reverso();
+    const back = reverso(estado.mazo);
     $('#mesa').innerHTML = estado.orden.map((_, k) =>
-      `<button type="button" aria-pressed="false" data-k="${k}" aria-label="Carta ${k + 1} de 22, boca abajo" style="--k:${k};--g:${((k * 37) % 7) - 3}deg">${carta(back)}</button>`).join('');
+      `<button type="button" aria-pressed="false" data-k="${k}" aria-label="Carta ${k + 1} de ${TOTAL}, boca abajo" style="--k:${k};--g:${((k * 37) % 5) - 2}deg">${carta(back, estado.mazo)}</button>`).join('');
     actualizarElegir();
   }
   function actualizarElegir() {
     const n = estado.tirada.pos.length, falta = n - estado.elegidas.length;
     $('#estadoElegir').textContent = falta === 0 ? 'Listo. Confirma tu elección o cambia alguna carta.'
-      : falta === 1 ? (n === 1 ? 'Toca la carta que te llame.' : 'Falta 1 carta.') : `Faltan ${falta} cartas.`;
+      : falta === 1 ? (n === 1 ? 'Las 78 cartas están boca abajo. Toca la que te llame.' : 'Falta 1 carta.') : `Las 78 cartas están boca abajo. Faltan ${falta}.`;
     $('#btnConfirmar').disabled = falta !== 0;
     $$('#mesa button').forEach((b) => {
       const pos = estado.elegidas.indexOf(Number(b.dataset.k));
       b.setAttribute('aria-pressed', String(pos >= 0));
       const o = b.querySelector('.orden'); if (o) o.remove();
       if (pos >= 0) b.insertAdjacentHTML('beforeend', `<span class="orden" aria-hidden="true">${pos + 1}</span>`);
-      b.setAttribute('aria-label', `Carta ${Number(b.dataset.k) + 1} de 22, boca abajo` + (pos >= 0 ? `, elegida para ${estado.tirada.pos[pos].nombre}` : ''));
+      b.setAttribute('aria-label', `Carta ${Number(b.dataset.k) + 1} de ${TOTAL}, boca abajo` + (pos >= 0 ? `, elegida para ${estado.tirada.pos[pos].nombre}` : ''));
     });
   }
   $('#mesa').addEventListener('click', (e) => {
@@ -217,13 +252,13 @@
   const cartasDeLectura = () => estado.elegidas.map((k) => estado.orden[k]);
 
   function pintarLectura() {
-    const ids = cartasDeLectura(), pos = estado.tirada.pos;
+    const ids = cartasDeLectura(), pos = estado.tirada.pos, mz = estado.mazo;
     estado.reveladas = new Set();
     $('#ranuras').className = 'ranuras' + (ids.length === 1 ? ' una' : '');
     $('#ranuras').innerHTML = ids.map((id, i) =>
       `<div class="ranura"><p class="pos">${pos[i].nombre}</p>
         <button type="button" class="giro" data-i="${i}" aria-label="Revelar la carta de ${pos[i].nombre}">
-          <span class="dentro"><span class="lado carta">${reverso()}</span><span class="lado frente carta">${cara(id)}</span></span>
+          <span class="dentro"><span class="lado carta c-${mz}">${reverso(mz)}</span><span class="lado frente carta c-${mz}">${cara(id, mz, false)}</span></span>
         </button>
         <p class="nombre" data-n="${i}"></p></div>`).join('');
     $('#interpretacion').hidden = true; $('#interpretacion').innerHTML = '';
@@ -232,17 +267,18 @@
     $('#estadoLectura').textContent = ids.length === 1 ? 'Toca la carta para darla vuelta.' : 'Toca cada carta para darla vuelta.';
   }
   function revelar(i) {
-    if (estado.reveladas.has(i)) return;
-    estado.reveladas.add(i);
     const ids = cartasDeLectura(), b = $(`.giro[data-i="${i}"]`), k = CARTAS[ids[i]];
-    b.classList.add('vista-carta'); b.disabled = true;
-    b.setAttribute('aria-label', `${estado.tirada.pos[i].nombre}: ${k.nombre}`);
+    if (estado.reveladas.has(i)) { ampliar(ids[i]); return; }
+    estado.reveladas.add(i);
+    b.classList.add('vista-carta');
+    b.setAttribute('aria-label', `${estado.tirada.pos[i].nombre}: ${k.nombre}. Ampliar la carta`);
     $(`[data-n="${i}"]`).textContent = k.nombre;
+    b.parentElement.classList.add('brilla');
     roce(0.22);
     if (estado.reveladas.size === ids.length) {
       $('#accionesRevelar').hidden = true;
       $('#tituloLectura').textContent = 'Tu lectura';
-      $('#estadoLectura').textContent = ids.length === 1 ? `Salió ${k.nombre}.` : `Salieron ${lista(ids.map((x) => CARTAS[x].nombre))}.`;
+      $('#estadoLectura').textContent = (ids.length === 1 ? `Salió ${k.nombre}.` : `Salieron ${lista(ids.map((x) => CARTAS[x].nombre))}.`) + ' Toca una carta para verla en grande.';
       const lento = !matchMedia('(prefers-reduced-motion: reduce)').matches;
       setTimeout(pintarInterpretacion, lento ? 900 : 0);
     } else {
@@ -250,24 +286,49 @@
     }
   }
   $('#ranuras').addEventListener('click', (e) => { const b = e.target.closest('.giro'); if (b) revelar(Number(b.dataset.i)); });
-  $('#btnRevelarTodas').addEventListener('click', () => cartasDeLectura().forEach((_, i) => revelar(i)));
+  $('#btnRevelarTodas').addEventListener('click', () => cartasDeLectura().forEach((_, i) => { if (!estado.reveladas.has(i)) revelar(i); }));
+
+  /* ---------- ampliar una carta ---------- */
+  const visor = $('#visor');
+  function ampliar(i, mazo = estado.mazo) {
+    const k = CARTAS[i], nota = notaMazo(i, mazo);
+    $('#visorCuerpo').innerHTML = `${carta(cara(i, mazo, false), mazo)}
+      <p class="pos">${i < 22 ? 'Arcano mayor ' + numero(i, mazo) : 'Arcano menor · ' + k.palo}</p>
+      <h3 id="visorTitulo">${k.nombre}</h3><p class="claves">${k.claves}</p>${nota ? `<p class="nota-mazo">${nota}</p>` : ''}
+      <p class="credito">${mazoDe(mazo).credito}</p>`;
+    if (visor.showModal) visor.showModal(); else visor.setAttribute('open', '');
+  }
+  $('#visorCerrar').addEventListener('click', () => visor.close());
+  visor.addEventListener('click', (e) => { if (e.target === visor) visor.close(); });
+  $('#interpretacion').addEventListener('click', (e) => { const b = e.target.closest('[data-ver]'); if (b) ampliar(Number(b.dataset.ver)); });
 
   function sintesis(ks) {
     const t = estado.tirada.id;
-    if (t === 'una') return `${ks[0].nombre} te deja una imagen para hoy: ${ks[0].hilo}.`;
-    if (t === 'tiempo') return `Leídas en orden, tus cartas trazan un recorrido: vienes ${de(ks[0].hilo)}, hoy te encuentras con ${ks[1].hilo} y se abre, como posibilidad, ${ks[2].hilo}.`;
-    return `Juntas, tus cartas muestran tres ángulos de lo mismo: la situación lleva la marca ${de(ks[0].hilo)}, el desafío te pone frente a ${ks[1].hilo} y la posibilidad apunta hacia ${ks[2].hilo}.`;
+    let s;
+    if (t === 'una') s = `${ks[0].nombre} te deja una imagen para hoy: ${ks[0].hilo}.`;
+    else if (t === 'tiempo') s = `Leídas en orden, tus cartas trazan un recorrido: vienes ${de(ks[0].hilo)}, hoy te encuentras con ${ks[1].hilo} y se abre, como posibilidad, ${ks[2].hilo}.`;
+    else s = `Juntas, tus cartas muestran tres ángulos de lo mismo: la situación lleva la marca ${de(ks[0].hilo)}, el desafío te pone frente a ${ks[1].hilo} y la posibilidad apunta hacia ${ks[2].hilo}.`;
+    if (ks.length > 1) {
+      const may = ks.filter((k) => !k.palo).length, palos = ks.filter((k) => k.palo).map((k) => k.palo);
+      const rep = palos.find((p, i) => palos.indexOf(p) !== i);
+      const SENT = { Bastos: 'la acción y las ganas', Copas: 'los afectos', Espadas: 'las ideas y las palabras', Oros: 'lo concreto y cotidiano' };
+      if (may === ks.length) s += ' Las tres son arcanos mayores: la lectura habla de temas de fondo más que de asuntos del día a día.';
+      else if (may === 0 && rep) s += ` Se repite el palo de ${rep}: el acento está en ${SENT[rep]}.`;
+      else if (may === 0) s += ' Son todas arcanos menores: la lectura se mueve en lo cotidiano, en gestos y situaciones concretas.';
+    }
+    return s;
   }
 
   function pintarInterpretacion() {
-    const ids = cartasDeLectura(), ks = ids.map((i) => CARTAS[i]), pos = estado.tirada.pos;
+    const ids = cartasDeLectura(), ks = ids.map((i) => CARTAS[i]), pos = estado.tirada.pos, mz = estado.mazo;
     const tema = TEMAS.find((t) => t.id === estado.tema);
-    const cls = 'mazo-' + estado.mazo;
-    let h = `<div><p class="intro">${tema.intro}</p>${estado.pregunta ? `<p class="cita">Tu pregunta: «${esc(estado.pregunta)}». Tenla presente mientras lees.</p>` : ''}</div>`;
-    h += ks.map((k, i) =>
-      `<article class="bloque">${carta(cara(ids[i]), cls)}
+    let h = `<div class="adorno" aria-hidden="true"></div><div><p class="intro">${tema.intro}</p>${estado.pregunta ? `<p class="cita">Tu pregunta: «${esc(estado.pregunta)}». Tenla presente mientras lees.</p>` : ''}</div>`;
+    h += ks.map((k, i) => {
+      const nota = notaMazo(ids[i], mz);
+      return `<article class="bloque"><button type="button" class="ver" data-ver="${ids[i]}" aria-label="Ampliar ${esc(k.nombre)}">${carta(cara(ids[i], mz), mz)}</button>
         <div><p class="pos">${pos[i].nombre}</p><h3>${k.nombre}</h3><p class="claves">${k.claves}</p>
-        <p class="texto">${LECTURA_POS[pos[i].id](k)}</p></div></article>`).join('');
+        <p class="texto">${LECTURA_POS[pos[i].id](k)}</p>${nota ? `<p class="nota-mazo">${nota}</p>` : ''}</div></article>`;
+    }).join('');
     h += `<section class="sintesis"><h3>${ks.length === 1 ? 'En síntesis' : 'Leídas en conjunto'}</h3><p>${sintesis(ks)}</p><p>${tema.cierre}</p></section>`;
     h += `<section><h3>Preguntas para ti</h3><ul>${ks.map((k) => `<li>${k.pregunta}</li>`).join('')}</ul></section>`;
     h += `<section><h3>Para seguir explorando</h3><ul>${tema.acciones.map((a) => `<li>${a}</li>`).join('')}</ul></section>`;
@@ -310,12 +371,13 @@
     }
     el.innerHTML = a.map((r) => {
       const t = TIRADAS.find((x) => x.id === r.tirada) || TIRADAS[0], tema = TEMAS.find((x) => x.id === r.tema) || TEMAS[0];
-      const cartas = (r.cartas || []).filter((i) => CARTAS[i]);
+      const mz = mazoDe(r.mazo), cartas = (r.cartas || []).filter((i) => CARTAS[i]);
       return `<article class="registro">
         <p class="fecha">${fmtFecha.format(new Date(r.fecha))}</p>
         <h3 style="margin-top:6px">${t.nombre} · ${tema.nombre}</h3>
-        <div class="mini-cartas mazo-${esc(r.mazo)}">${cartas.map((i) => carta(cara(i))).join('')}</div>
+        <div class="mini-cartas">${cartas.map((i) => carta(cara(i, mz.id), mz.id)).join('')}</div>
         <p>${cartas.map((i, n) => `${t.pos[n] ? t.pos[n].nombre + ': ' : ''}${CARTAS[i].nombre}`).join(' · ')}</p>
+        <p style="margin-top:4px">Mazo ${mz.nombre}, ${mz.anio}</p>
         ${r.pregunta ? `<p style="margin-top:6px"><em>«${esc(r.pregunta)}»</em></p>` : ''}
         ${r.nota ? `<p class="nota-propia">${esc(r.nota)}</p>` : ''}
         <div class="acciones" style="margin-top:14px"><button type="button" class="btn chico" data-borrar="${esc(r.id)}">Borrar esta lectura</button></div>
@@ -326,6 +388,18 @@
     const b = e.target.closest('[data-borrar]'); if (!b) return;
     if (b.dataset.seguro !== '1') { b.dataset.seguro = '1'; b.textContent = 'Toca de nuevo para borrar'; return; }
     escribir(leer().filter((x) => x.id !== b.dataset.borrar)); pintarHistorial(); aviso('Lectura borrada.');
+  });
+
+  $('#creditos').innerHTML = MAZOS.map((m) => `<li>${m.credito}</li>`).join('');
+  /* ---------- aparición al hacer scroll ---------- */
+  document.documentElement.classList.add('js');
+  const ojo = 'IntersectionObserver' in window
+    ? new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('visto'); ojo.unobserve(e.target); } }), { threshold: 0.12 })
+    : null;
+  $$('.seccion > h2, .seccion > .bajada, .como > h2, .planes > h2, .vit, .pasos li, .plan-lista li, .mazo, .tirada').forEach((el) => {
+    el.classList.add('revela');
+    el.style.setProperty('--r', Array.prototype.indexOf.call(el.parentElement.children, el) % 4);
+    if (ojo) ojo.observe(el); else el.classList.add('visto');
   });
 
   ir('inicio', false);
