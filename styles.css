@@ -92,7 +92,7 @@ main { flex: 1; width: 100%; max-width: 1120px; margin: 0 auto; padding: 8px 16p
 .paso { font-size: .76rem; letter-spacing: .2em; text-transform: uppercase; color: var(--lavanda); }
 
 /* ---------- cartas ---------- */
-.carta { display: block; aspect-ratio: var(--ar, .58); border-radius: 5.5% / 3.2%; overflow: hidden; background: #2a2420; box-shadow: 0 10px 26px rgba(0,0,0,.5); }
+.carta { display: block; aspect-ratio: var(--ar, .58); border-radius: 5.5% / 3.2%; overflow: hidden; background: #d9cdb4; box-shadow: 0 10px 26px rgba(0,0,0,.5); }
 .carta img, .carta svg { display: block; width: 100%; height: 100%; object-fit: cover; }
 .cb { fill: var(--cbg); }
 .ln { fill: none; stroke: var(--cln); stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; }
@@ -178,10 +178,10 @@ textarea::placeholder { color: #9993ab; }
 .mesa { display: grid; grid-template-columns: repeat(10, 1fr); padding-right: 6.4%; row-gap: 16px; }
 .mesa button { position: relative; width: 168%; background: none; border: 0; padding: 0; border-radius: 4px; transform: rotate(var(--g)); transition: transform .25s cubic-bezier(.2,.7,.2,1); animation: reparte .45s cubic-bezier(.2,.7,.2,1) backwards; animation-delay: calc(var(--k) * 11ms); }
 @keyframes reparte { from { opacity: 0; transform: translateY(-26px) scale(.8); } }
-.mesa .carta { box-shadow: -2px 0 6px rgba(0,0,0,.45); }
+.mesa .carta { box-shadow: 0 0 0 1px rgba(20,12,8,.75), -4px 0 9px rgba(0,0,0,.6); }
 .mesa button:hover, .mesa button:focus-visible { transform: translateY(-8px); z-index: 2; }
 .mesa button[aria-pressed="true"] { transform: translateY(-14px); z-index: 3; }
-.mesa button[aria-pressed="true"] .carta { box-shadow: 0 0 0 2px var(--fondo), 0 0 0 4px var(--oro-claro), 0 12px 26px rgba(0,0,0,.6); }
+.mesa button[aria-pressed="true"] .carta { box-shadow: 0 0 0 2px var(--fondo), 0 0 0 5px var(--oro), 0 12px 26px rgba(0,0,0,.7); }
 .mesa .orden { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 28px; height: 28px; border-radius: 50%; background: #101326; color: var(--marfil); border: 1.5px solid var(--oro-claro); font-weight: 600; font-size: .9rem; display: grid; place-items: center; }
 .acciones.fija { position: fixed; left: 0; right: 0; bottom: 0; margin: 0; padding: 14px 16px calc(14px + env(safe-area-inset-bottom)); justify-content: center; background: linear-gradient(transparent, var(--fondo) 38%); z-index: 5; }
 .acciones.fija .btn { width: 100%; max-width: 420px; }

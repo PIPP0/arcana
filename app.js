@@ -171,7 +171,7 @@
   const CIELO2 = astrolabio(8, 48, [[60, 20], [88, 80], [58, 140], [86, 200], [62, 265], [88, 320]]);
   $$('.rueda').forEach((el) => { el.innerHTML = el.classList.contains('dos') ? CIELO2 : CIELO1; });
   $('#vitrina').innerHTML = MAZOS.filter((m) => !m.pendiente).map((m) =>
-    `<li class="vit tema-${m.id}"><span class="abanico" aria-hidden="true">${m.muestra.slice(0, 3).map((i) => carta(cara(i, m.id), m.id)).join('')}</span>
+    `<li class="vit tema-${m.id}"><span class="abanico" aria-hidden="true">${m.muestra.slice(0, 3).map((i) => carta(cara(i, m.id, false), m.id)).join('')}</span>
       <p class="precio">${m.anio} · ${m.lugar}</p><h3>${m.nombre}</h3><p>${m.tecnica}. 78 cartas.</p></li>`).join('');
 
   /* desfile de cartas reales */
@@ -225,7 +225,7 @@
   $('#listaMazos').innerHTML = MAZOS.map((m) => m.pendiente
     ? `<div class="mazo tema-${m.id}"><span class="ficha"><span class="precio">${m.anio} · ${m.lugar}</span><h3>${m.nombre}</h3><p>${m.desc}</p><span class="etiqueta">Se está cargando · disponible muy pronto</span></span></div>`
     : `<button type="button" class="mazo tema-${m.id}" data-mazo="${m.id}">
-      <span class="abanico cinco" aria-hidden="true">${m.muestra.map((i) => carta(cara(i, m.id), m.id)).join('')}</span>
+      <span class="abanico cinco" aria-hidden="true">${m.muestra.map((i) => carta(cara(i, m.id, false), m.id)).join('')}</span>
       <span class="ficha"><span class="precio">${m.anio} · ${m.lugar}</span><h3>${m.nombre}</h3>
         <p>${m.desc}</p><span class="etiqueta">78 cartas · ${m.tecnica}</span>
         <span class="elegir">Leer con este mazo →</span></span>
