@@ -61,15 +61,49 @@
       pos: [{ id: 'situacion', nombre: 'Situación' }, { id: 'desafio', nombre: 'Desafío' }, { id: 'posibilidad', nombre: 'Posibilidad' }] }
   ];
 
-  const LECTURA_POS = {
-    mensaje: (k) => `${k.esencia} ${k.luz}`,
-    pasado: (k) => `Lo que traes contigo. ${k.esencia} Mirar hacia atrás con esta carta es reconocer cuánto de eso sigue acompañándote.`,
-    presente: (k) => `Donde estás hoy. ${k.esencia} ${k.sombra}`,
-    futuro: (k) => `Lo que podría abrirse, como posibilidad y no como certeza. ${k.luz} Nada de esto está escrito: depende de lo que tú hagas con ello.`,
-    situacion: (k) => `El punto de partida. ${k.esencia}`,
-    desafio: (k) => `Lo que pide atención. ${k.sombra}`,
-    posibilidad: (k) => `Hacia dónde podrías mirar. ${k.luz}`
+  /* ---------- reflexión: conecta cada carta con el tema y con la pregunta ---------- */
+  const AMBITO = {
+    general: { en: 'en este momento de tu vida', a: 'tu día a día', pas: 'en tu historia reciente' },
+    amor: { en: 'en tus vínculos', a: 'tus relaciones', pas: 'en la historia de tus vínculos' },
+    trabajo: { en: 'en tu trabajo y tus proyectos', a: 'tu trabajo', pas: 'en tu recorrido de trabajo' },
+    crecimiento: { en: 'en tu camino personal', a: 'tu propio crecimiento', pas: 'en tu propio recorrido' },
+    decisiones: { en: 'frente a la decisión que tienes delante', a: 'esa decisión', pas: 'en lo que te trajo hasta esta decisión' },
+    libre: { en: 'en aquello que preguntas', a: 'tu pregunta', pas: 'en lo que hay detrás de tu pregunta' }
   };
+  const mayus = (t) => t.charAt(0).toUpperCase() + t.slice(1);
+  function reflexion(pos, k, tema) {
+    const A = AMBITO[tema] || AMBITO.general;
+    switch (pos) {
+      case 'pasado': return `Mira hacia atrás, ${A.pas}: ¿en qué momento apareció ${k.hilo}? Esta carta no te pide volver ahí, sino reconocer qué de eso sigue contigo y qué ya puedes dejar donde está.`;
+      case 'presente': return `Hoy, ${A.en}, la carta pone al centro ${k.hilo}. ${k.sombra} ¿Dónde lo has notado en estos días?`;
+      case 'futuro': return `Nada está escrito, pero esta carta abre una posibilidad ${A.en}. ${k.luz} ¿Qué gesto pequeño, tuyo, la haría más probable?`;
+      case 'situacion': return `${mayus(A.en)}, el punto de partida es ${k.hilo}. ¿Lo reconoces en lo que estás viviendo? ¿Qué nombre le pondrías tú?`;
+      case 'desafio': return `${k.sombra} Llévalo a ${A.a}: ¿dónde te está pasando justo eso?`;
+      case 'posibilidad': return `${k.luz} ${mayus(A.en)}, ¿cómo se vería eso en la práctica esta semana?`;
+      default: return `${k.luz} Llévalo a ${A.a}: ¿qué cambiaría hoy si miraras las cosas desde ${k.hilo}?`;
+    }
+  }
+  const PREG_TEMA = {
+    amor: (h) => `¿Qué lugar le das a ${h} en la forma en que te vinculas?`,
+    trabajo: (h) => `¿Dónde aparece ${h} en tu trabajo, y qué harías distinto si lo tomaras en serio?`,
+    crecimiento: (h) => `¿Qué te está enseñando ${h} sobre quien estás siendo?`,
+    decisiones: (h) => `Si eligieras desde ${h}, ¿qué opción tomarías?`
+  };
+  // Lee la forma de la pregunta para devolverla con más luz, sin responderla por la persona.
+  function leerPregunta(q) {
+    const t = q.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    const r = { notas: [], apoyo: false, profesional: false };
+    if (/suicid|matarme|quitarme la vida|no quiero vivir|no quiero seguir viviendo|hacerme dano|morirme/.test(t)) r.apoyo = true;
+    if (/enferm|cancer|embaraz|diagnostic|operacion|tratamiento|juicio|demanda|abogad|invertir|inversion|prestamo|credito|deuda/.test(t)) r.profesional = true;
+    if (/\bcuando\b/.test(t)) r.notas.push('El tarot no da fechas. Lo que sí puede mostrarte es qué tendría que moverse en ti para que ese momento se acerque.');
+    if (/\b(el|ella|mi ex|mi pareja|mi pololo|mi polola|mi esposo|mi esposa|mi marido|mi jefe|mi jefa|mi mama|mi papa|mi amig[oa])\b.*\b(quiere|ama|siente|piensa|volvera|vuelve|hara|va a)\b|me (quiere|ama|extrana)|piensa en mi|siente por mi/.test(t))
+      r.notas.push('Tu pregunta mira hacia otra persona. Las cartas solo pueden hablar de tu parte: de lo que sientes, de lo que esperas y de lo que puedes hacer tú.');
+    if (/^[¿\s]*(debo|deberia|acepto|me conviene|conviene|sera|va a|voy a|volvera|tendre|podre|lograre|es bueno|esta bien|hay|me va a|lo voy a|vale la pena|sigo|renuncio|me cambio|me quedo)\b/.test(t) || /\bo no\b/.test(t))
+      r.notas.push('Tu pregunta busca un sí o un no. Las cartas no responden así: te devuelven la pregunta con más luz. Prueba a darle la vuelta: en lugar de «¿qué va a pasar?», «¿qué necesito ver para elegir?».');
+    if (/por que/.test(t)) r.notas.push('Preguntas por un porqué. Quizás las cartas no te den la causa, pero sí una imagen desde donde entenderla.');
+    if (!r.notas.length) r.notas.push('Tenla presente mientras lees: cada carta es una manera distinta de mirarla.');
+    return r;
+  }
 
   const estado = { mazo: 'rws', tema: 'general', pregunta: '', tirada: null, orden: [], elegidas: [], reveladas: new Set(), guardada: false };
 
@@ -216,8 +250,8 @@
   (function () {
     const k = CARTAS[17];
     $('#muestra').innerHTML = `${carta(cara(17, 'rws'), 'rws')}
-      <div><p class="pos">Presente</p><h3>${k.nombre}</h3><p class="claves">${k.claves}</p>
-      <p class="texto">${LECTURA_POS.presente(k)}</p>
+      <div><p class="pos">Presente · Crecimiento personal</p><h3>${k.nombre}</h3><p class="claves">${k.claves}</p>
+      <p class="significa">${k.esencia}</p><p class="rot">Para ti</p><p class="texto">${reflexion('presente', k, 'crecimiento')}</p>
       <p class="pregunta"><b>Una pregunta para ti</b>${k.pregunta}</p></div>`;
   })();
 
@@ -378,7 +412,7 @@
     let s;
     if (t === 'una') s = `${ks[0].nombre} te deja una imagen para hoy: ${ks[0].hilo}.`;
     else if (t === 'tiempo') s = `Leídas en orden, tus cartas trazan un recorrido: vienes ${de(ks[0].hilo)}, hoy te encuentras con ${ks[1].hilo} y se abre, como posibilidad, ${ks[2].hilo}.`;
-    else s = `Juntas, tus cartas muestran tres ángulos de lo mismo: la situación lleva la marca ${de(ks[0].hilo)}, el desafío te pone frente a ${ks[1].hilo} y la posibilidad apunta hacia ${ks[2].hilo}.`;
+    else s = `Juntas, tus cartas muestran tres ángulos de lo mismo: la situación lleva la marca ${de(ks[0].hilo)}, el desafío te pone ante ${ks[1].hilo} y la posibilidad apunta hacia ${ks[2].hilo}.`;
     if (ks.length > 1) {
       const may = ks.filter((k) => !k.palo).length, palos = ks.filter((k) => k.palo).map((k) => k.palo);
       const rep = palos.find((p, i) => palos.indexOf(p) !== i);
@@ -392,16 +426,20 @@
 
   function pintarInterpretacion() {
     const ids = cartasDeLectura(), ks = ids.map((i) => CARTAS[i]), pos = estado.tirada.pos, mz = estado.mazo;
-    const tema = TEMAS.find((t) => t.id === estado.tema);
-    let h = `<div class="adorno" aria-hidden="true"></div><div><p class="intro">${tema.intro}</p>${estado.pregunta ? `<p class="cita">Tu pregunta: «${esc(estado.pregunta)}». Tenla presente mientras lees.</p>` : ''}</div>`;
+    const tema = TEMAS.find((t) => t.id === estado.tema), centro = ks[Math.floor(ks.length / 2)];
+    const lp = estado.pregunta ? leerPregunta(estado.pregunta) : null;
+    let h = `<div class="adorno" aria-hidden="true"></div><div><p class="intro">${tema.intro}</p></div>`;
+    if (lp && lp.apoyo) h += `<div class="apoyo"><h3>No tienes que pasar por esto a solas</h3><p>Si estás viviendo un momento muy difícil, hablar con alguien ayuda. En Chile puedes llamar gratis al <b>*4141</b>, la línea de prevención del suicidio, o a Salud Responde al <b>600 360 7777</b>, a cualquier hora.</p></div>`;
+    if (lp) h += `<div class="tu-pregunta"><p class="pos">Tu pregunta</p><p class="q">«${esc(estado.pregunta)}»</p>${lp.notas.map((n) => `<p>${n}</p>`).join('')}${lp.profesional ? '<p>Para temas de salud, legales o de dinero, toma esta lectura solo como una pausa para pensar: la decisión merece el consejo de un profesional.</p>' : ''}</div>`;
     h += ks.map((k, i) => {
       const nota = notaMazo(ids[i], mz);
       return `<article class="bloque"><button type="button" class="ver" data-ver="${ids[i]}" aria-label="Ampliar ${esc(k.nombre)}">${carta(cara(ids[i], mz), mz)}</button>
         <div><p class="pos">${pos[i].nombre}</p><h3>${k.nombre}</h3><p class="claves">${k.claves}</p>
-        <p class="texto">${LECTURA_POS[pos[i].id](k)}</p>${nota ? `<p class="nota-mazo">${nota}</p>` : ''}</div></article>`;
+        <p class="significa">${k.esencia}</p>
+        <p class="rot">Para ti</p><p class="texto">${reflexion(pos[i].id, k, estado.tema)}</p>${nota ? `<p class="nota-mazo">${nota}</p>` : ''}</div></article>`;
     }).join('');
-    h += `<section class="sintesis"><h3>${ks.length === 1 ? 'En síntesis' : 'Leídas en conjunto'}</h3><p>${sintesis(ks)}</p><p>${tema.cierre}</p></section>`;
-    h += `<section><h3>Preguntas para ti</h3><ul>${ks.map((k) => `<li>${k.pregunta}</li>`).join('')}</ul></section>`;
+    h += `<section class="sintesis"><h3>${ks.length === 1 ? 'En síntesis' : 'Leídas en conjunto'}</h3><p>${sintesis(ks)}</p>${estado.pregunta ? `<p>Vuelve ahora a tu pregunta. Leída desde ${centro.hilo}, ¿qué respuesta se asoma que no tenías antes de barajar?</p>` : ''}<p>${tema.cierre}</p></section>`;
+    h += `<section><h3>Preguntas para ti</h3><ul>${ks.map((k) => `<li>${k.pregunta}</li>`).join('')}${PREG_TEMA[estado.tema] ? `<li>${PREG_TEMA[estado.tema](centro.hilo)}</li>` : ''}</ul></section>`;
     h += `<section><h3>Para seguir explorando</h3><ul>${tema.acciones.map((a) => `<li>${a}</li>`).join('')}</ul></section>`;
     h += `<p class="descargo">Esta es una interpretación simbólica, pensada para reflexionar. No predice lo que va a pasar ni reemplaza el consejo de un profesional.</p>`;
     h += `<section class="cierre"><h3>Tu reflexión</h3>
