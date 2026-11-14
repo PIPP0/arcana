@@ -17,7 +17,7 @@
 /* proporción de carta de cada mazo */
 .c-rws { --ar: .578; }
 .c-dodal { --ar: .547; }
-.c-sola { --ar: .55; --cbg: #24130f; --cln: #cfa56b; }
+.c-sola { --ar: .54; --cbg: #24130f; --cln: #cfa56b; }
 
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }

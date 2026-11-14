@@ -27,7 +27,7 @@
       credito: 'Tarot Sola-Busca, c. 1491. Pinacoteca di Brera, Milán.',
       nombres: ['Mato', 'Panfilio', 'Postumio', 'Lenpio', 'Mario', 'Catulo', 'Sesto', 'Deo Tauro', 'Nerone', 'Falco', 'Venturio',
         'Tulio', 'Carbone', 'Catone', 'Bocho', 'Metelo', 'Olivo', 'Ipeo', 'Lentulo', 'Sabino', 'Nenbroto', 'Nabuchodenasor'],
-      propios: true, pendiente: true }
+      propios: true }
   ];
   const mazoDe = (id) => MAZOS.find((m) => m.id === id) || MAZOS[0];
 
