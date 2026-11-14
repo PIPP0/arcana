@@ -200,9 +200,7 @@
     btn.addEventListener('click', () => {
       if (btn.classList.contains('vista-carta')) { ampliar(g.carta, 'rws'); return; }
       roce(0.22); mostrar();
-      g.vista = true; try { localStorage.setItem('arcana.hoy.v1', JSON.stringify(g)); } catch (e) { /* sigue igual */ }
     });
-    if (g.vista) mostrar();
   })();
 
   /* entradas por tema */
@@ -475,5 +473,8 @@
     if (ojo) ojo.observe(el); else el.classList.add('visto');
   });
 
+  /* Al actualizar, la página parte de cero: arriba y sin nada tocado. */
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+  window.addEventListener('pageshow', (e) => { if (e.persisted) location.reload(); });
   ir('inicio', false);
 })();
