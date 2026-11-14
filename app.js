@@ -473,6 +473,16 @@
     if (ojo) ojo.observe(el); else el.classList.add('visto');
   });
 
+  /* Si una imagen falla por un error pasajero del servidor, se vuelve a pedir sola. */
+  document.addEventListener('error', (e) => {
+    const im = e.target;
+    if (!im || im.tagName !== 'IMG') return;
+    const n = Number(im.dataset.reintento || 0);
+    if (n >= 5) return;
+    im.dataset.reintento = n + 1;
+    setTimeout(() => { im.src = im.getAttribute('src').split('?')[0] + '?r=' + (n + 1); }, 500 * (n + 1));
+  }, true);
+
   /* Al actualizar, la página parte de cero: arriba y sin nada tocado. */
   if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
   window.addEventListener('pageshow', (e) => { if (e.persisted) location.reload(); });
