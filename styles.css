@@ -487,6 +487,89 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .apoyo b { color: var(--oro-claro); font-weight: 500; white-space: nowrap; }
 .pista img { content-visibility: auto; }
 
+/* ---------- rendimiento: animaciones baratas ---------- */
+body::after { animation: none; opacity: .6; will-change: auto; }
+.rueda img { display: block; width: 100%; height: 100%; }
+.trio { animation: flotaT 8s ease-in-out infinite; will-change: transform; }
+.trio .carta { animation: abre 1.2s cubic-bezier(.2,.7,.2,1) backwards; box-shadow: 0 0 0 1px color-mix(in srgb, var(--oro) 60%, transparent), 0 14px 28px rgba(0,0,0,.6); }
+@keyframes flotaT { 50% { transform: translateY(-9px); } }
+.cielo::after { content: ''; position: absolute; inset: 22%; z-index: -1; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--oro) 30%, transparent), transparent); }
+.btn.grande { position: relative; animation: none; }
+.btn.grande::before { content: ''; position: absolute; inset: -4px; border-radius: inherit; pointer-events: none; box-shadow: 0 0 34px 4px color-mix(in srgb, var(--oro) 55%, transparent); opacity: 0; animation: latido 4s ease-in-out infinite; will-change: opacity; }
+@keyframes latido { 50% { opacity: 1; } }
+.pista { will-change: transform; }
+.hoy .giro:not(.vista-carta) { will-change: rotate; }
+.fuera, .fuera *, .fuera *::before, .fuera *::after { animation-play-state: paused !important; }
+.vista { animation-duration: .32s; }
+.giro .dentro { transition-duration: .7s; }
+@media (prefers-reduced-motion: no-preference) {
+  .js .revela { transition-duration: .5s; transition-delay: calc(var(--r, 0) * 60ms); }
+  .js .revela .abanico .carta { transition-duration: .6s; transition-delay: calc(var(--r, 0) * 60ms + 120ms); }
+}
+
+/* ---------- páginas interiores ---------- */
+body.interior main::before { content: ''; position: fixed; right: -260px; bottom: -280px; width: 820px; aspect-ratio: 1; z-index: -1; pointer-events: none; background: var(--astro) center / contain no-repeat; opacity: .22; }
+body.interior main::after { content: ''; position: fixed; left: -300px; top: -260px; width: 700px; aspect-ratio: 1; z-index: -1; pointer-events: none; background: var(--astro) center / contain no-repeat; opacity: .12; transform: rotate(40deg); }
+.interior .vista > h2 { font-size: clamp(2.2rem, 7vw, 3.6rem); }
+.interior .vista > h2::before { content: ''; display: block; width: 20px; height: 20px; margin: 0 auto 14px; background: no-repeat center / contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 1l2.6 8.4L23 12l-8.4 2.6L12 23l-2.6-8.4L1 12l8.4-2.6z' fill='%23e2c17c'/%3E%3C/svg%3E"); }
+
+.ruta { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px 10px; margin: 0 auto 26px; }
+.ruta:empty { display: none; }
+.ruta > span { display: inline-flex; align-items: center; gap: 10px; padding: 7px 16px; border-radius: 999px; border: 1px solid var(--linea); background: rgba(var(--panel), .5); font-size: .9rem; line-height: 1.2; }
+.ruta b { display: block; font-weight: 400; font-size: .72rem; letter-spacing: .1em; color: var(--oro); margin-right: 8px; }
+.ruta .r-mazo { padding-left: 7px; }
+.ruta .r-mazo > span { display: block; text-align: left; }
+.ruta .r-mazo b { font-family: var(--serif); font-size: .98rem; letter-spacing: 0; color: var(--marfil); margin: 0; }
+.ruta .carta { width: 26px; box-shadow: 0 2px 6px rgba(0,0,0,.5); border-radius: 3px; }
+
+/* temas con imagen */
+.temas-int { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 28px; }
+.temas-int .tema-p { min-height: 150px; }
+.temas-int .tema-p:last-child:nth-child(odd) { grid-column: auto; }
+.temas-int .tema-p span { font-size: 1.15rem; }
+.temas-int .tema-p[aria-checked="true"] { border-color: var(--oro-claro); box-shadow: 0 0 0 2px var(--oro), 0 0 34px color-mix(in srgb, var(--oro) 40%, transparent); }
+.temas-int .tema-p[aria-checked="true"] img { opacity: .95; }
+.temas-int .tema-p[aria-checked="true"]::before { content: '✦'; position: absolute; right: 12px; top: 10px; z-index: 2; color: var(--oro-claro); font-size: 1.1rem; text-shadow: 0 0 10px #000; }
+#v-intencion textarea { font-size: 1.1rem; min-height: 110px; background: rgba(var(--panel), .5); border-radius: 18px; padding: 18px; }
+#v-intencion .campo { text-align: center; font-family: var(--serif); font-size: 1.4rem; margin-top: 40px; }
+#v-intencion .nota.izq { text-align: center; }
+#v-intencion.estrecha { max-width: 760px; }
+
+/* tiradas con las cartas del mazo */
+.tiradas { gap: 18px; margin-top: 34px; }
+.tirada { padding: 30px 22px 28px; border-radius: 24px; display: flex; flex-direction: column; align-items: center; background: radial-gradient(120% 80% at 50% 0%, rgba(var(--panel), 1), rgba(var(--panel), .2)); }
+.tirada:hover { box-shadow: 0 20px 50px rgba(0,0,0,.45), 0 0 40px color-mix(in srgb, var(--oro) 16%, transparent); }
+.tendido { display: flex; justify-content: center; align-items: flex-end; gap: 10px; height: 176px; margin-bottom: 20px; }
+.puesto { display: flex; flex-direction: column; align-items: center; gap: 8px; transition: transform .35s cubic-bezier(.2,.7,.2,1); }
+.puesto .carta { width: 66px; box-shadow: 0 0 0 1px color-mix(in srgb, var(--oro) 45%, transparent), 0 10px 22px rgba(0,0,0,.6); }
+.puesto em { font-style: normal; font-size: .74rem; letter-spacing: .1em; color: var(--oro); }
+.t-una .puesto .carta { width: 82px; }
+.t-perspectivas .puesto:nth-child(1) { transform: rotate(-9deg) translateY(8px); }
+.t-perspectivas .puesto:nth-child(3) { transform: rotate(9deg) translateY(8px); }
+.tirada:hover .puesto { transform: translateY(-8px); }
+.tirada:hover .t-none, .t-perspectivas:hover .puesto:nth-child(1) { transform: rotate(-13deg) translate(-6px, 2px); }
+.t-perspectivas:hover .puesto:nth-child(3) { transform: rotate(13deg) translate(6px, 2px); }
+.tirada h3 { font-size: 1.8rem; margin-top: 6px; }
+.tirada .para { color: var(--marfil); margin-top: 12px; font-size: .98rem; flex: 1; }
+.tirada .elegir { margin-top: 18px; padding: 10px 22px; border-radius: 999px; border: 1px solid var(--oro); font-weight: 400; transition: background .2s; }
+.tirada:hover .elegir { background: color-mix(in srgb, var(--oro) 22%, transparent); }
+
+@media (min-width: 720px) {
+  .temas-int { grid-template-columns: repeat(3, 1fr); }
+  .temas-int .tema-p { min-height: 190px; }
+  .tendido { height: 210px; }
+  .puesto .carta { width: 84px; }
+  .t-una .puesto .carta { width: 104px; }
+}
+
+@media (max-width: 719px) {
+  body.interior main::after { display: none; }
+  body.interior main::before { width: 520px; right: -250px; bottom: -250px; opacity: .16; }
+  .ruta { gap: 6px; margin-bottom: 18px; }
+  .ruta > span { padding: 5px 12px; font-size: .82rem; }
+  .ruta .r-mazo { padding-left: 6px; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }

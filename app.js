@@ -168,8 +168,11 @@
     if (id === 'tirada') estado.pregunta = $('#pregunta').value.trim();
     if (id === 'barajar') prepararBarajar();
     if (id === 'espacio') pintarHistorial();
+    if (id === 'intencion') pintarTemas();
+    if (id === 'tirada') pintarTiradas();
+    pintarRuta(id);
     $$('.vista').forEach((v) => { v.hidden = v.id !== 'v-' + id; });
-    document.body.className = (CON_TEMA.includes(id) ? 'tema-' + estado.mazo : '') + (id === 'elegir' ? ' con-fija' : '');
+    document.body.className = (CON_TEMA.includes(id) ? 'tema-' + estado.mazo : '') + (id === 'elegir' ? ' con-fija' : '') + (id === 'inicio' ? '' : ' interior');
     window.scrollTo(0, 0);
     if (foco) { const h = $('#v-' + id + ' h1, #v-' + id + ' h2'); if (h) h.focus({ preventScroll: true }); }
   }
@@ -178,12 +181,21 @@
     if (b) ir(b.dataset.ir);
   });
 
+  function pintarRuta(id) {
+    const m = mazoDe(estado.mazo), tema = TEMAS.find((t) => t.id === estado.tema);
+    const con = { intencion: 1, tirada: 2, barajar: 3, elegir: 3, lectura: 3 }[id] || 0;
+    const partes = [`<span class="r-mazo">${carta(reverso(m.id), m.id)}<span><b>${m.nombre}</b>${m.anio}</span></span>`];
+    if (con >= 2) partes.push(`<span><b>Tema</b>${tema.nombre}</span>`);
+    if (con >= 3 && estado.tirada) partes.push(`<span><b>Tirada</b>${estado.tirada.nombre}</span>`);
+    $$('[data-ruta]').forEach((el) => { el.innerHTML = con ? partes.join('') : ''; });
+  }
+
   /* ---------- inicio ---------- */
   $('#heroCartas').innerHTML = [18, 17, 19].map((i) => carta(cara(i, 'rws', false), 'rws')).join('');
 
   /* Astrolabio: círculos, marcas y una constelación trazada. */
   function astrolabio(n, marcas, puntos) {
-    let s = '<svg viewBox="-100 -100 200 200" fill="none" stroke="currentColor" stroke-width=".35" aria-hidden="true">';
+    let s = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-100 -100 200 200" fill="none" stroke="#e2c17c" stroke-width=".35">';
     s += '<circle r="99"/><circle r="92" stroke-dasharray="1 2.4"/><circle r="78" opacity=".6"/>';
     for (let i = 0; i < marcas; i++) {
       const a = (i * 2 * Math.PI) / marcas, l = i % (marcas / n) === 0 ? 92 : 96;
@@ -197,13 +209,16 @@
     puntos.forEach(([r, g], i) => {
       const a = (g * Math.PI) / 180, x = (r * Math.cos(a)).toFixed(1), y = (r * Math.sin(a)).toFixed(1);
       d += (i ? 'L' : 'M') + x + ' ' + y;
-      s += `<circle cx="${x}" cy="${y}" r="${i % 3 ? 0.9 : 1.6}" fill="currentColor" stroke="none"/>`;
+      s += `<circle cx="${x}" cy="${y}" r="${i % 3 ? 0.9 : 1.6}" fill="#e2c17c" stroke="none"/>`;
     });
     return s + `<path d="${d}" opacity=".55"/></svg>`;
   }
   const CIELO1 = astrolabio(12, 72, [[85, 10], [70, 34], [86, 62], [66, 95], [84, 130], [72, 168], [87, 205], [68, 248], [85, 290], [71, 330]]);
   const CIELO2 = astrolabio(8, 48, [[60, 20], [88, 80], [58, 140], [86, 200], [62, 265], [88, 320]]);
-  $$('.rueda').forEach((el) => { el.innerHTML = el.classList.contains('dos') ? CIELO2 : CIELO1; });
+  const comoImg = (svg) => 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+  const IMG1 = comoImg(CIELO1), IMG2 = comoImg(CIELO2);
+  $$('.rueda').forEach((el) => { el.innerHTML = `<img alt="" src="${el.classList.contains('dos') ? IMG2 : IMG1}">`; });
+  document.documentElement.style.setProperty('--astro', `url("${IMG1}")`);
   $('#vitrina').innerHTML = MAZOS.filter((m) => !m.pendiente).map((m) =>
     `<li class="vit tema-${m.id}"><span class="abanico" aria-hidden="true">${m.muestra.slice(0, 3).map((i) => carta(cara(i, m.id, false), m.id)).join('')}</span>
       <p class="precio">${m.anio} · ${m.lugar}</p><h3>${m.nombre}</h3><p>${m.tecnica}. 78 cartas.</p></li>`).join('');
@@ -238,7 +253,7 @@
   })();
 
   /* entradas por tema */
-  const TEMA_IMG = { amor: 6, trabajo: 66, decisiones: 7, crecimiento: 9, general: 17 };
+  const TEMA_IMG = { amor: 6, trabajo: 66, decisiones: 7, crecimiento: 9, general: 17, libre: 2 };
   $('#temasPortada').innerHTML = ['amor', 'trabajo', 'decisiones', 'crecimiento', 'general'].map((id) =>
     `<button type="button" class="tema-p" data-tema-ir="${id}"><img src="${src('rws', TEMA_IMG[id])}" alt="" loading="lazy" decoding="async"><span>${TEMAS.find((t) => t.id === id).nombre}</span></button>`).join('');
   $('#temasPortada').addEventListener('click', (e) => {
@@ -272,7 +287,7 @@
   /* ---------- temas ---------- */
   function pintarTemas() {
     $('#listaTemas').innerHTML = TEMAS.map((t) =>
-      `<button type="button" class="chip" role="radio" aria-checked="${t.id === estado.tema}" data-tema="${t.id}" tabindex="${t.id === estado.tema ? 0 : -1}">${t.nombre}</button>`).join('');
+      `<button type="button" class="tema-p" role="radio" aria-checked="${t.id === estado.tema}" data-tema="${t.id}" tabindex="${t.id === estado.tema ? 0 : -1}"><img src="${src(estado.mazo, TEMA_IMG[t.id])}" alt="" decoding="async"><span>${t.nombre}</span></button>`).join('');
   }
   pintarTemas();
   $('#listaTemas').addEventListener('click', (e) => {
@@ -289,12 +304,23 @@
   });
 
   /* ---------- tiradas ---------- */
-  $('#listaTiradas').innerHTML = TIRADAS.map((t) =>
-    `<button type="button" class="tirada" data-tirada="${t.id}">
-      <span class="mini" aria-hidden="true">${t.pos.map(() => '<i></i>').join('')}</span>
-      <h3>${t.nombre}</h3><p>${t.desc}</p>
-      <ol aria-label="Posiciones">${t.pos.map((p) => `<li>${p.nombre}</li>`).join('')}</ol>
-    </button>`).join('');
+  const TIRADA_INFO = {
+    una: { min: 'Un minuto', para: 'Para una pausa breve o para empezar el día con una imagen.' },
+    tiempo: { min: 'Tres minutos', para: 'Para entender cómo llegaste hasta aquí y hacia dónde puedes ir.' },
+    perspectivas: { min: 'Tres minutos', para: 'Para un asunto concreto que no logras ver con claridad.' }
+  };
+  function pintarTiradas() {
+    const back = reverso(estado.mazo);
+    $('#listaTiradas').innerHTML = TIRADAS.map((t) =>
+      `<button type="button" class="tirada t-${t.id} revela visto" data-tirada="${t.id}">
+        <span class="tendido" aria-hidden="true">${t.pos.map((p) => `<span class="puesto">${carta(back, estado.mazo)}<em>${p.nombre}</em></span>`).join('')}</span>
+        <span class="precio">${TIRADA_INFO[t.id].min}</span>
+        <h3>${t.nombre}</h3><p>${t.desc}</p><p class="para">${TIRADA_INFO[t.id].para}</p>
+        <span class="sr">Posiciones: ${t.pos.map((p) => p.nombre).join(', ')}</span>
+        <span class="elegir">Elegir esta tirada</span>
+      </button>`).join('');
+  }
+  pintarTiradas();
   $('#listaTiradas').addEventListener('click', (e) => {
     const b = e.target.closest('[data-tirada]'); if (!b) return;
     estado.tirada = TIRADAS.find((t) => t.id === b.dataset.tirada); ir('barajar');
@@ -385,7 +411,7 @@
       $('#tituloLectura').textContent = 'Tu lectura';
       $('#estadoLectura').textContent = (ids.length === 1 ? `Salió ${k.nombre}.` : `Salieron ${lista(ids.map((x) => CARTAS[x].nombre))}.`) + ' Toca una carta para verla en grande.';
       const lento = !matchMedia('(prefers-reduced-motion: reduce)').matches;
-      setTimeout(pintarInterpretacion, lento ? 900 : 0);
+      setTimeout(pintarInterpretacion, lento ? 600 : 0);
     } else {
       $('#estadoLectura').textContent = `${estado.tirada.pos[i].nombre}: ${k.nombre}.`;
     }
@@ -510,6 +536,12 @@
     el.style.setProperty('--r', Array.prototype.indexOf.call(el.parentElement.children, el) % 4);
     if (ojo) ojo.observe(el); else el.classList.add('visto');
   });
+
+  /* Las animaciones continuas se pausan cuando su bloque no está en pantalla. */
+  if ('IntersectionObserver' in window) {
+    const vigia = new IntersectionObserver((es) => es.forEach((e) => e.target.classList.toggle('fuera', !e.isIntersecting)), { rootMargin: '80px' });
+    $$('.cielo, .desfile, .hoy, .final, .orbita').forEach((el) => vigia.observe(el));
+  }
 
   /* Si una imagen falla por un error pasajero del servidor, se vuelve a pedir sola. */
   document.addEventListener('error', (e) => {

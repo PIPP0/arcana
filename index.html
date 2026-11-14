@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,500;1,6..96,400&family=Jost:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=13">
+<link rel="stylesheet" href="styles.css?v=14">
 </head>
 <body>
 <a class="salto" href="#contenido">Saltar al contenido</a>
@@ -158,9 +158,10 @@
   <!-- INTENCIÓN -->
   <section class="vista estrecha" id="v-intencion" hidden>
     <div class="cabecera"><button type="button" class="volver" data-ir="mazo">← Volver</button><p class="paso"><span class="lunas" aria-hidden="true"><i class="llena"></i><i class="actual"></i><i class=""></i><i class=""></i><i class=""></i></span><span class="sr">Paso 2 de 5</span></p></div>
+    <div class="ruta" data-ruta></div>
     <h2 tabindex="-1">¿Qué quieres explorar?</h2>
     <p class="bajada">Piensa en aquello que quieres explorar. No necesitas encontrar las palabras perfectas.</p>
-    <div class="chips" id="listaTemas" role="radiogroup" aria-label="Tema de la lectura"></div>
+    <div class="temas-int" id="listaTemas" role="radiogroup" aria-label="Tema de la lectura"></div>
     <label class="campo" for="pregunta">Tu pregunta <span>(opcional)</span></label>
     <textarea id="pregunta" autocomplete="off" rows="3" maxlength="240" placeholder="Por ejemplo: ¿qué necesito mirar antes de decidir?"></textarea>
     <p class="nota izq">Tu pregunta se queda en este dispositivo. No se envía a ningún servidor.</p>
@@ -170,6 +171,7 @@
   <!-- TIRADA -->
   <section class="vista" id="v-tirada" hidden>
     <div class="cabecera"><button type="button" class="volver" data-ir="intencion">← Volver</button><p class="paso"><span class="lunas" aria-hidden="true"><i class="llena"></i><i class="llena"></i><i class="actual"></i><i class=""></i><i class=""></i></span><span class="sr">Paso 3 de 5</span></p></div>
+    <div class="ruta" data-ruta></div>
     <h2 tabindex="-1">Elige tu tirada</h2>
     <p class="bajada">Cada posición tiene un significado definido antes de empezar.</p>
     <div class="tiradas" id="listaTiradas"></div>
@@ -178,6 +180,7 @@
   <!-- BARAJAR -->
   <section class="vista estrecha centro" id="v-barajar" hidden>
     <div class="cabecera"><button type="button" class="volver" data-ir="tirada">← Volver</button><p class="paso"><span class="lunas" aria-hidden="true"><i class="llena"></i><i class="llena"></i><i class="llena"></i><i class="actual"></i><i class=""></i></span><span class="sr">Paso 4 de 5</span></p></div>
+    <div class="ruta" data-ruta></div>
     <h2 tabindex="-1">Baraja el mazo</h2>
     <p class="bajada">Toca el mazo las veces que quieras. Cada vez, las 78 cartas se reordenan al azar.</p>
     <div class="orbita"><div class="rueda" aria-hidden="true"></div><button type="button" class="pila" id="pila" aria-label="Barajar el mazo"></button></div>
@@ -191,6 +194,7 @@
   <!-- ELEGIR -->
   <section class="vista" id="v-elegir" hidden>
     <div class="cabecera"><button type="button" class="volver" data-ir="barajar">← Volver</button><p class="paso"><span class="lunas" aria-hidden="true"><i class="llena"></i><i class="llena"></i><i class="llena"></i><i class="llena"></i><i class="actual"></i></span><span class="sr">Paso 5 de 5</span></p></div>
+    <div class="ruta" data-ruta></div>
     <h2 tabindex="-1" id="tituloElegir">Elige tus cartas</h2>
     <p class="estado" id="estadoElegir" aria-live="polite"></p>
     <div class="tapete"><div class="mesa" id="mesa"></div></div>
@@ -201,6 +205,7 @@
 
   <!-- LECTURA -->
   <section class="vista" id="v-lectura" hidden>
+    <div class="ruta" data-ruta></div>
     <h2 tabindex="-1" id="tituloLectura">Tu lectura</h2>
     <p class="estado" id="estadoLectura" aria-live="polite"></p>
     <div class="orbita ancha"><div class="rueda" aria-hidden="true"></div><div class="ranuras" id="ranuras"></div></div>
@@ -232,8 +237,8 @@
 
 <div class="aviso" id="aviso" role="status" aria-live="polite"></div>
 
-<script src="cards.js?v=13"></script>
-<script src="menores.js?v=13"></script>
-<script src="app.js?v=13"></script>
+<script src="cards.js?v=14"></script>
+<script src="menores.js?v=14"></script>
+<script src="app.js?v=14"></script>
 </body>
 </html>
