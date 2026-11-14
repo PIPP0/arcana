@@ -8,8 +8,8 @@
 <meta name="theme-color" content="#101326">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,300;0,400;0,500;1,300&family=Marcellus&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=7">
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,500;1,6..96,400&family=Jost:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css?v=8">
 </head>
 <body>
 <a class="salto" href="#contenido">Saltar al contenido</a>
@@ -18,6 +18,7 @@
   <button class="marca" type="button" data-ir="inicio" aria-label="ARCANA, ir al inicio">ARCANA</button>
   <nav aria-label="Principal">
     <button type="button" class="enlace" data-ir="espacio">Mi espacio</button>
+    <button type="button" class="btn primario chico cta-barra" data-ir="mazo">Comenzar</button>
     <button type="button" class="enlace" id="btnSonido" aria-pressed="false">Sonido: no</button>
   </nav>
 </header>
@@ -27,47 +28,123 @@
   <!-- INICIO -->
   <section class="vista" id="v-inicio">
     <div class="hero">
-      <h1 tabindex="-1">Las cartas cuentan historias</h1>
-      <p class="bajada">Descubre lo que pueden inspirar en la tuya. Lee con mazos reales de 1491, 1701 y 1909, completos, con sus 78 cartas.</p>
+      <h1 tabindex="-1">Las cartas cuentan historias.<em>Descubre la tuya.</em></h1>
+      <p class="bajada">Una lectura de tarot íntima y hermosa, con mazos reales de 1491, 1701 y 1909. En dos minutos, gratis y sin registrarte.</p>
       <div class="cielo" aria-hidden="true">
         <div class="rueda"></div><div class="rueda dos"></div>
         <div class="trio" id="heroCartas"></div>
       </div>
       <div class="acciones">
-        <button type="button" class="btn primario" data-ir="mazo">Comenzar mi lectura</button>
-        <button type="button" class="btn" data-ir="mazo">Explorar mazos</button>
+        <button type="button" class="btn primario grande" data-ir="mazo">Comenzar mi lectura gratis</button>
+        <a class="btn" href="#hoy">Ver mi carta de hoy</a>
       </div>
-      <p class="nota">Gratis, sin registro y sin entregar datos personales</p>
-    </div>
-
-    <div class="seccion">
-      <div class="adorno" aria-hidden="true"></div>
-      <h2>Tres mazos, cinco siglos</h2>
-      <p class="bajada centro">Cada mazo es una obra histórica real, con sus propias imágenes para las 78 cartas.</p>
-      <ul class="vitrina" id="vitrina"></ul>
-      <div class="acciones" style="justify-content:center"><button type="button" class="btn primario" data-ir="mazo">Elegir un mazo</button></div>
-    </div>
-
-    <div class="como">
-      <div class="adorno" aria-hidden="true"></div>
-      <h2>Cómo funciona</h2>
-      <ol class="pasos">
-        <li><span>I</span><div><h3>Elige tu mazo</h3><p>Tres mazos históricos muy distintos entre sí. Cambia la imagen; el sentido de cada carta se mantiene.</p></div></li>
-        <li><span>II</span><div><h3>Baraja y escoge</h3><p>El orden queda definido al azar cuando barajas, antes de que elijas. Tú decides qué cartas tomar.</p></div></li>
-        <li><span>III</span><div><h3>Lee y reflexiona</h3><p>Cada carta se interpreta según su posición, y juntas forman una historia con preguntas para ti.</p></div></li>
-      </ol>
-    </div>
-
-    <div class="planes">
-      <div class="adorno" aria-hidden="true"></div>
-      <h2>Lo que viene</h2>
-      <p class="bajada centro">Esta es una demostración. Hoy puedes hacer lecturas gratuitas con los tres mazos completos. Lo demás está en preparación y todavía no se puede comprar.</p>
-      <ul class="plan-lista">
-        <li><h3>Hoy</h3><p class="precio">Gratis</p><p>Una carta o tres cartas, tres mazos históricos de 78 cartas, interpretación y diario en tu dispositivo.</p></li>
-        <li><h3>Lectura profunda</h3><p class="precio">Próximamente</p><p>Tiradas más amplias con interpretación personalizada según tu pregunta.</p></li>
-        <li><h3>Premium</h3><p class="precio">Próximamente</p><p>Mazos exclusivos, cartas invertidas, historial en tu cuenta y estilos de lectura.</p></li>
+      <ul class="sellos">
+        <li>78 cartas reales por mazo</li><li>Sin crear una cuenta</li><li>Tu pregunta no sale de tu dispositivo</li>
       </ul>
     </div>
+
+    <div class="desfile" aria-hidden="true"><div class="pista" id="desfile"></div></div>
+
+    <section class="tramo" id="hoy">
+      <div class="adorno" aria-hidden="true"></div>
+      <h2>Tu carta de hoy</h2>
+      <p class="bajada centro">Una imagen para acompañar tu día. Toca la carta para darla vuelta.</p>
+      <div class="hoy">
+        <button type="button" class="giro c-rws" id="hoyGiro" aria-label="Dar vuelta mi carta de hoy"></button>
+        <div class="hoy-texto" id="hoyTexto" aria-live="polite">
+          <p class="hoy-espera">Está boca abajo, esperándote.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="tramo">
+      <div class="adorno" aria-hidden="true"></div>
+      <h2>¿Qué quieres mirar hoy?</h2>
+      <p class="bajada centro">Elige un tema y empieza. Puedes escribir tu propia pregunta o dejarla en silencio.</p>
+      <div class="temas-g" id="temasPortada"></div>
+    </section>
+
+    <section class="tramo">
+      <div class="adorno" aria-hidden="true"></div>
+      <h2>Tres mazos, cinco siglos de arte</h2>
+      <p class="bajada centro">No son ilustraciones genéricas: son las cartas originales de tres obras históricas, completas.</p>
+      <ul class="vitrina" id="vitrina"></ul>
+    </section>
+
+    <section class="tramo">
+      <div class="adorno" aria-hidden="true"></div>
+      <h2>Más que un significado: una historia</h2>
+      <p class="bajada centro">Cada carta se lee según el lugar que ocupa, y juntas forman un relato con preguntas para ti. Así se ve una parte de una lectura:</p>
+      <div class="muestra" id="muestra"></div>
+    </section>
+
+    <section class="tramo">
+      <div class="adorno" aria-hidden="true"></div>
+      <h2>Tu lectura en tres gestos</h2>
+      <ol class="pasos">
+        <li><span>I</span><div><h3>Elige tu mazo</h3><p>Tres obras históricas muy distintas. Cambia la imagen; el sentido de cada carta se mantiene.</p></div></li>
+        <li><span>II</span><div><h3>Baraja y escoge</h3><p>El orden queda definido al azar cuando barajas, antes de que elijas. Tú decides qué cartas tomar.</p></div></li>
+        <li><span>III</span><div><h3>Lee y reflexiona</h3><p>Una interpretación clara, carta por carta y en conjunto, que puedes guardar en tu diario.</p></div></li>
+      </ol>
+    </section>
+
+    <section class="tramo" id="planes">
+      <div class="adorno" aria-hidden="true"></div>
+      <h2>Empieza gratis. Profundiza cuando quieras.</h2>
+      <p class="bajada centro">Hoy puedes leer gratis con los mazos completos. Las lecturas profundas y Premium están en preparación.</p>
+      <ul class="planes-g">
+        <li class="plan">
+          <h3>Esencial</h3>
+          <p class="monto">Gratis</p><p class="periodo">Disponible hoy</p>
+          <ul><li>Lecturas de una y de tres cartas</li><li>Mazos históricos de 78 cartas</li><li>Carta del día</li><li>Diario privado en tu dispositivo</li></ul>
+          <button type="button" class="btn primario" data-ir="mazo">Comenzar ahora</button>
+        </li>
+        <li class="plan dest">
+          <p class="cinta">La más completa</p>
+          <h3>Lectura profunda</h3>
+          <p class="monto">$3.990</p><p class="periodo">por lectura</p>
+          <ul><li>Tiradas amplias, como la Cruz Celta</li><li>Interpretación personalizada según tu pregunta</li><li>Resumen completo para descargar</li></ul>
+          <button type="button" class="btn" disabled>Muy pronto</button>
+        </li>
+        <li class="plan">
+          <h3>Premium</h3>
+          <p class="monto">$6.990</p><p class="periodo">al mes</p>
+          <ul><li>Lecturas profundas incluidas cada mes</li><li>Mazos exclusivos y cartas invertidas</li><li>Historial y diario en tu cuenta</li><li>Estilos de lectura a elección</li></ul>
+          <button type="button" class="btn" disabled>Muy pronto</button>
+        </li>
+      </ul>
+      <p class="nota centro-t">Precios de referencia en pesos chilenos. Todavía no se puede comprar: por ahora, todo lo disponible es gratis.</p>
+    </section>
+
+    <section class="tramo">
+      <div class="adorno" aria-hidden="true"></div>
+      <h2>Una lectura en la que puedes confiar</h2>
+      <ul class="garantias">
+        <li><h3>Sin promesas falsas</h3><p>Las cartas no predicen el futuro. Te ofrecen símbolos e historias para pensar el tuyo.</p></li>
+        <li><h3>Tu intimidad es tuya</h3><p>No pedimos cuenta ni correo. Tu pregunta y tu diario se quedan en tu dispositivo.</p></li>
+        <li><h3>Azar de verdad</h3><p>El mazo se mezcla al azar antes de que elijas. Nadie decide por ti qué carta sale.</p></li>
+        <li><h3>Sin presiones</h3><p>Nada de cuentas regresivas ni mensajes de miedo. Lees cuando quieres y te vas cuando quieres.</p></li>
+      </ul>
+    </section>
+
+    <section class="tramo estrecha">
+      <div class="adorno" aria-hidden="true"></div>
+      <h2>Preguntas frecuentes</h2>
+      <div class="faq">
+        <details><summary>¿De verdad es gratis?</summary><p>Sí. Las lecturas de una y de tres cartas, con los mazos completos, son gratuitas y no requieren registro. Más adelante habrá lecturas profundas y un plan Premium, siempre con el precio a la vista antes de pagar.</p></details>
+        <details><summary>¿El tarot predice el futuro?</summary><p>ARCANA no hace predicciones. Presenta el tarot como un lenguaje simbólico: una manera de mirar tu situación desde otro ángulo y hacerte buenas preguntas.</p></details>
+        <details><summary>¿Necesito saber de tarot?</summary><p>No. Cada carta viene explicada en lenguaje simple, según la posición que ocupa en tu tirada, con una síntesis del conjunto.</p></details>
+        <details><summary>¿Qué mazos puedo usar?</summary><p>Mazos históricos reales, con sus 78 cartas originales: el Rider-Waite-Smith de 1909, el Tarot de Marsella de Jean Dodal (c. 1701) y el Sola-Busca de 1491.</p></details>
+        <details><summary>¿Qué pasa con lo que escribo?</summary><p>Tu pregunta y tus notas no se envían a ningún servidor. Se guardan solo en tu dispositivo y puedes borrarlas cuando quieras.</p></details>
+      </div>
+    </section>
+
+    <section class="final">
+      <div class="rueda" aria-hidden="true"></div>
+      <h2>El mazo ya está barajado</h2>
+      <p class="bajada centro">Dos minutos, una pregunta y tres cartas. Lo demás lo pones tú.</p>
+      <div class="acciones"><button type="button" class="btn primario grande" data-ir="mazo">Comenzar mi lectura gratis</button></div>
+    </section>
   </section>
 
   <!-- MAZO -->
@@ -155,8 +232,8 @@
 
 <div class="aviso" id="aviso" role="status" aria-live="polite"></div>
 
-<script src="cards.js?v=7"></script>
-<script src="menores.js?v=7"></script>
-<script src="app.js?v=7"></script>
+<script src="cards.js?v=8"></script>
+<script src="menores.js?v=8"></script>
+<script src="app.js?v=8"></script>
 </body>
 </html>

@@ -174,6 +174,55 @@
     `<li class="vit tema-${m.id}"><span class="abanico" aria-hidden="true">${m.muestra.slice(0, 3).map((i) => carta(cara(i, m.id), m.id)).join('')}</span>
       <p class="precio">${m.anio} · ${m.lugar}</p><h3>${m.nombre}</h3><p>${m.tecnica}. 78 cartas.</p></li>`).join('');
 
+  /* desfile de cartas reales */
+  const DESFILE = [['rws', 17], ['dodal', 19], ['sola', 0], ['rws', 2], ['dodal', 1], ['sola', 13], ['rws', 36], ['dodal', 10], ['sola', 21], ['rws', 19], ['dodal', 18], ['sola', 6], ['rws', 6], ['dodal', 64]];
+  $('#desfile').innerHTML = DESFILE.concat(DESFILE).map(([m, i]) => `<img src="${src(m, i)}" alt="" loading="lazy" decoding="async">`).join('');
+
+  /* carta del día: la misma durante todo el día, en este dispositivo */
+  (function () {
+    const hoy = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Santiago' }).format(new Date());
+    let g = null;
+    try { g = JSON.parse(localStorage.getItem('arcana.hoy.v1')); } catch (e) { /* sin almacenamiento */ }
+    if (!g || g.dia !== hoy || !CARTAS[g.carta]) {
+      const b = new Uint32Array(1); crypto.getRandomValues(b);
+      g = { dia: hoy, carta: b[0] % TOTAL, vista: false };
+      try { localStorage.setItem('arcana.hoy.v1', JSON.stringify(g)); } catch (e) { /* sigue igual */ }
+    }
+    const k = CARTAS[g.carta], btn = $('#hoyGiro');
+    btn.innerHTML = `<span class="dentro"><span class="lado carta c-rws">${reverso('rws')}</span><span class="lado frente carta c-rws">${cara(g.carta, 'rws', false)}</span></span>`;
+    function mostrar() {
+      btn.classList.add('vista-carta');
+      btn.setAttribute('aria-label', `Tu carta de hoy: ${k.nombre}. Ampliar`);
+      $('#hoyTexto').innerHTML = `<p class="pos">Tu carta de hoy</p><h3>${k.nombre}</h3><p class="claves">${k.claves}</p>
+        <p class="mensaje">${k.luz}</p>
+        <div class="acciones"><button type="button" class="btn primario" data-ir="mazo">Profundizar con tres cartas</button></div>`;
+    }
+    btn.addEventListener('click', () => {
+      if (btn.classList.contains('vista-carta')) { ampliar(g.carta, 'rws'); return; }
+      roce(0.22); mostrar();
+      g.vista = true; try { localStorage.setItem('arcana.hoy.v1', JSON.stringify(g)); } catch (e) { /* sigue igual */ }
+    });
+    if (g.vista) mostrar();
+  })();
+
+  /* entradas por tema */
+  const TEMA_IMG = { amor: 6, trabajo: 66, decisiones: 7, crecimiento: 9, general: 17 };
+  $('#temasPortada').innerHTML = ['amor', 'trabajo', 'decisiones', 'crecimiento', 'general'].map((id) =>
+    `<button type="button" class="tema-p" data-tema-ir="${id}"><img src="${src('rws', TEMA_IMG[id])}" alt="" loading="lazy" decoding="async"><span>${TEMAS.find((t) => t.id === id).nombre}</span></button>`).join('');
+  $('#temasPortada').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-tema-ir]'); if (!b) return;
+    estado.tema = b.dataset.temaIr; pintarTemas(); ir('mazo');
+  });
+
+  /* muestra de una lectura */
+  (function () {
+    const k = CARTAS[17];
+    $('#muestra').innerHTML = `${carta(cara(17, 'rws'), 'rws')}
+      <div><p class="pos">Presente</p><h3>${k.nombre}</h3><p class="claves">${k.claves}</p>
+      <p class="texto">${LECTURA_POS.presente(k)}</p>
+      <p class="pregunta"><b>Una pregunta para ti</b>${k.pregunta}</p></div>`;
+  })();
+
   /* ---------- mazos ---------- */
   $('#listaMazos').innerHTML = MAZOS.map((m) => m.pendiente
     ? `<div class="mazo tema-${m.id}"><span class="ficha"><span class="precio">${m.anio} · ${m.lugar}</span><h3>${m.nombre}</h3><p>${m.desc}</p><span class="etiqueta">Se está cargando · disponible muy pronto</span></span></div>`
@@ -420,7 +469,7 @@
   const ojo = 'IntersectionObserver' in window
     ? new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('visto'); ojo.unobserve(e.target); } }), { threshold: 0.12 })
     : null;
-  $$('.seccion > h2, .seccion > .bajada, .como > h2, .planes > h2, .vit, .pasos li, .plan-lista li, .mazo, .tirada').forEach((el) => {
+  $$('.tramo > h2, .tramo > .bajada, .vit, .pasos li, .mazo, .tirada, .tema-p, .plan, .garantias li, .muestra, .hoy, .faq details, .final').forEach((el) => {
     el.classList.add('revela');
     el.style.setProperty('--r', Array.prototype.indexOf.call(el.parentElement.children, el) % 4);
     if (ojo) ojo.observe(el); else el.classList.add('visto');
