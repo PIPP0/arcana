@@ -88,7 +88,15 @@
     puerta(`<h1>Administración</h1><p>Entra con la cuenta de Google autorizada para ver el panel.</p>
       ${msg ? `<p style="color:var(--mal)">${esc(msg)}</p>` : ''}
       <div style="margin-top:22px"><button type="button" class="btn primario" id="entrar">Entrar con Google</button></div>`);
-    $('#entrar').onclick = async () => { try { await D.entrar(); } catch (e) { pantallaLogin('No se pudo iniciar sesión. Intenta de nuevo.'); } };
+    $('#entrar').onclick = async () => { try { await D.entrar(); } catch (e) {
+      const c = (e && e.code) || (e && e.message) || 'desconocido';
+      const t = { 'auth/unauthorized-domain': 'Este sitio (pipp0.github.io) no está en «Dominios autorizados» de Authentication.',
+        'auth/popup-blocked': 'El navegador bloqueó la ventana de Google. Permite ventanas emergentes para este sitio.',
+        'auth/popup-closed-by-user': 'Cerraste la ventana de Google antes de terminar.',
+        'auth/cancelled-popup-request': 'Se canceló la ventana de Google. Intenta de nuevo.',
+        'auth/operation-not-allowed': 'El acceso con Google no está activado en Authentication.' }[c];
+      pantallaLogin((t || 'No se pudo iniciar sesión.') + ' (código: ' + c + ')');
+    } };
   }
   function pantallaSinAcceso() {
     puerta(`<h1>Sin acceso</h1><p>La cuenta <b>${esc(E.usuario.email)}</b> no está autorizada para abrir este panel.</p>
