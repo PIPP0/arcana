@@ -9,7 +9,15 @@
   const BASE = `https://www.gstatic.com/firebasejs/${VERSION}/`;
   const DEF = { cartaDelDia: true, desfile: true, planes: true, cuentas: true, medicion: true,
     mazos: { rws: true, dodal: true, sola: true }, aviso: { activo: false, texto: '' } };
-  const CACHE = 'arcana.func.v1';
+  const CACHE = 'arcana.func.v1', CACHE_P = 'arcana.perf.v1';
+  /* Perfiles: lo que cada uno incluye. null en un tope = sin límite. El admin lo cambia en config/perfiles. */
+  const T3 = { una: true, tiempo: true, perspectivas: true };
+  const PERF_DEF = {
+    free: { tiradas: { una: true, tiempo: true, perspectivas: false }, mazos: { rws: true, dodal: true, sola: false }, temaLibre: false, diario: true, lecturasDia: 5, guardadas: 10 },
+    full: { tiradas: Object.assign({}, T3), mazos: { rws: true, dodal: true, sola: true }, temaLibre: true, diario: true, lecturasDia: 15, guardadas: 100 },
+    premium: { tiradas: Object.assign({}, T3), mazos: { rws: true, dodal: true, sola: true }, temaLibre: true, diario: true, lecturasDia: null, guardadas: null }
+  };
+  const PERFILES = ['free', 'full', 'premium'];
 
   const esObj = (x) => x && typeof x === 'object' && !Array.isArray(x);
   const clonar = (o) => (esObj(o) ? Object.keys(o).reduce((r, k) => { r[k] = clonar(o[k]); return r; }, {}) : o);
@@ -21,6 +29,10 @@
   let guardado = null;
   try { guardado = JSON.parse(localStorage.getItem(CACHE)); } catch (e) { /* sin almacenamiento */ }
   let F = mezclar(DEF, guardado);
+  let guardadoP = null;
+  try { guardadoP = JSON.parse(localStorage.getItem(CACHE_P)); } catch (e) { /* sin almacenamiento */ }
+  let PF = mezclar(PERF_DEF, guardadoP);
+  let miPerfil = 'free';
   let usuario = null;
   const oyentesF = [], oyentesU = [];
   const aleatorio = (n) => { const a = new Uint8Array(n); crypto.getRandomValues(a); return Array.from(a, (x) => 'abcdefghijklmnopqrstuvwxyz0123456789'[x % 36]).join(''); };
@@ -69,6 +81,15 @@
         avisarF();
       }
     } catch (e) { /* sin permiso o sin red: se usan los valores guardados */ }
+    try {
+      const p = await c.fs.getDoc(c.fs.doc(c.db, 'config', 'perfiles'));
+      if (p.exists()) {
+        const d = p.data(); delete d.actualizado; delete d.por;
+        PF = mezclar(PERF_DEF, d);
+        try { localStorage.setItem(CACHE_P, JSON.stringify(d)); } catch (e) { /* sigue igual */ }
+        avisarF();
+      }
+    } catch (e) { /* idem */ }
     resolverF();
   }
 
@@ -109,14 +130,24 @@
     c.au.onAuthStateChanged(c.auth, (u) => {
       usuario = u && !u.isAnonymous && u.email ? { uid: u.uid, nombre: u.displayName || '', email: u.email } : null;
       avisarU();
-      if (usuario) tocarPersona(u, c, false);
+      if (usuario) { tocarPersona(u, c, false); leerPerfil(u, c); } else if (miPerfil !== 'free') { miPerfil = 'free'; avisarF(); }
     });
+  }
+  async function leerPerfil(u, c) {
+    try {
+      const s = await c.fs.getDoc(c.fs.doc(c.db, 'personas', u.uid));
+      const p = s.exists() && PERFILES.includes(s.data().perfil) ? s.data().perfil : 'free';
+      if (p !== miPerfil) { miPerfil = p; avisarF(); }
+    } catch (e) { /* sin ficha o sin red: se queda en Free */ }
   }
 
   const N = window.Nube = {
     activa: !!cfg,
     funciones: () => F,
     usuario: () => usuario,
+    perfil: () => (cfg ? miPerfil : 'premium'),
+    /* Lo que el perfil de esta persona incluye. Sin nube conectada (desarrollo local) se ve todo. */
+    permisos: () => (cfg ? PF[miPerfil] : PERF_DEF.premium),
     alCambiarFunciones(f) { oyentesF.push(f); f(F); },
     alCambiarUsuario(f) { oyentesU.push(f); },
     vista(id) { if (!midiendo()) return; ses.vistas[id] = (ses.vistas[id] || 0) + 1; marcar(); },
@@ -137,6 +168,22 @@
       const c = await conectar(); if (!c) throw new Error('sin-nube');
       const r = await c.au.signInWithPopup(c.auth, new c.au.GoogleAuthProvider());
       await tocarPersona(r.user, c, true);
+    },
+    async entrarConCorreo(correo, clave) {
+      const c = await conectar(); if (!c) throw new Error('sin-nube');
+      const r = await c.au.signInWithEmailAndPassword(c.auth, correo, clave);
+      await tocarPersona(r.user, c, true);
+    },
+    async crearCuenta(correo, clave, nombre) {
+      const c = await conectar(); if (!c) throw new Error('sin-nube');
+      const r = await c.au.createUserWithEmailAndPassword(c.auth, correo, clave);
+      if (nombre) { try { await c.au.updateProfile(r.user, { displayName: nombre.slice(0, 80) }); } catch (e) { /* el nombre es opcional */ } }
+      try { await c.au.sendEmailVerification(r.user); } catch (e) { /* se puede reenviar después */ }
+      await tocarPersona(r.user, c, true);
+    },
+    async recuperarClave(correo) {
+      const c = await conectar(); if (!c) throw new Error('sin-nube');
+      await c.au.sendPasswordResetEmail(c.auth, correo);
     },
     async salir() { const c = await conectar(); if (c) await c.au.signOut(c.auth); },
     async borrarMiFicha() {

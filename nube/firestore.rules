@@ -29,6 +29,12 @@ service cloud.firestore {
       allow write: if esAdmin();
     }
 
+    // Perfiles Free / Full / Premium: qué incluye cada uno. Los lee el sitio, solo el admin los cambia.
+    match /config/perfiles {
+      allow read: if true;
+      allow write: if esAdmin();
+    }
+
     // Una visita: qué pasos recorrió. Anónima (id aleatorio del navegador). Sin textos libres.
     match /sesiones/{sid} {
       allow read: if esAdmin();
@@ -82,15 +88,20 @@ service cloud.firestore {
     // Personas que entraron con Google (opcional). Cada una ve y borra la suya; el admin las lee.
     match /personas/{uid} {
       allow read: if (signedIn() && request.auth.uid == uid) || esAdmin();
-      allow create: if signedIn() && request.auth.uid == uid && verificado()
+      allow create: if signedIn() && request.auth.uid == uid
         && request.resource.data.keys().hasOnly(['nombre', 'email', 'creado', 'ultimoAcceso', 'accesos'])
         && request.resource.data.keys().hasAll(['email', 'creado', 'ultimoAcceso', 'accesos'])
         && request.resource.data.email == miCorreo()
         && (!('nombre' in request.resource.data) || (request.resource.data.nombre is string && request.resource.data.nombre.size() <= 80))
         && request.resource.data.creado == request.time && request.resource.data.ultimoAcceso == request.time
         && request.resource.data.accesos == 1;
+      // El perfil (Free/Full/Premium) lo asigna solo el admin; la persona no puede cambiárselo.
+      allow update: if esAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['perfil'])
+        && request.resource.data.perfil in ['free', 'full', 'premium'];
       allow update: if signedIn() && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(['nombre', 'email', 'creado', 'ultimoAcceso', 'accesos'])
+        && request.resource.data.keys().hasOnly(['nombre', 'email', 'creado', 'ultimoAcceso', 'accesos', 'perfil'])
+        && request.resource.data.get('perfil', null) == resource.data.get('perfil', null)
         && request.resource.data.email == resource.data.email
         && request.resource.data.creado == resource.data.creado
         && request.resource.data.ultimoAcceso == request.time

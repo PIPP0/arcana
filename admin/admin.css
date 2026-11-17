@@ -158,3 +158,8 @@ dl.datos dd { margin: 0; word-break: break-word; }
   dl.datos dd { margin-bottom: 10px; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+
+/* perfiles */
+.sel-perfil { background: rgba(0,0,0,.3); color: inherit; border: 1px solid var(--linea, #444); border-radius: 8px; padding: 6px 8px; font: inherit; }
+input.num { width: 110px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--linea, #444); background: rgba(0,0,0,.3); color: inherit; font: inherit; }
+tr.sub td { padding-top: 16px; color: var(--oro, #e2c17c); font-size: .85rem; letter-spacing: .06em; text-transform: uppercase; }

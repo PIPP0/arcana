@@ -582,3 +582,14 @@ body.interior main::after { content: ''; position: fixed; left: -300px; top: -26
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* perfiles, cupo diario y acceso con correo */
+.cupo { margin: 10px 0 0; font-size: .95rem; color: var(--lavanda); }
+.cupo.agotado { color: var(--oro-claro); border: 1px solid var(--linea); border-radius: 12px; padding: 10px 14px; background: rgba(var(--panel), .45); }
+.cuenta .o { margin-top: 18px; font-size: .85rem; letter-spacing: .06em; text-transform: uppercase; }
+.cuenta form { margin-top: 6px; }
+.cuenta form .campo { margin-top: 14px; font-size: .95rem; }
+.cuenta input[type=text], .cuenta input[type=email], .cuenta input[type=password] { display: block; width: 100%; max-width: 360px; margin-top: 6px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--linea); background: rgba(0,0,0,.3); color: var(--marfil); font: inherit; }
+.cuenta input:focus-visible { outline: 2px solid var(--oro); outline-offset: 2px; }
+.cuenta .error { min-height: 1.3em; color: #f0a39a; }
+.cuenta .error.ok { color: var(--oro-claro); }

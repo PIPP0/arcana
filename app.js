@@ -169,6 +169,7 @@
     if (id === 'barajar') prepararBarajar();
     if (id === 'espacio') pintarHistorial();
     if (id === 'intencion') pintarTemas();
+    if (id === 'mazo' || id === 'tirada') pintarCupo();
     if (id === 'tirada') pintarTiradas();
     pintarRuta(id);
     window.Nube.vista(id);
@@ -221,7 +222,24 @@
   const IMG1 = comoImg(CIELO1), IMG2 = comoImg(CIELO2);
   $$('.rueda').forEach((el) => { el.innerHTML = `<img alt="" src="${el.classList.contains('dos') ? IMG2 : IMG1}">`; });
   document.documentElement.style.setProperty('--astro', `url("${IMG1}")`);
-  const mazoActivo = (id) => ((window.Nube.funciones().mazos) || {})[id] !== false;
+  const permisos = () => window.Nube.permisos();
+  const NOMBRE_PERFIL = { free: 'Free', full: 'Full', premium: 'Premium' };
+  const mazoActivo = (id) => ((window.Nube.funciones().mazos) || {})[id] !== false && ((permisos().mazos) || {})[id] !== false;
+  const tiradasPermitidas = () => TIRADAS.filter((t) => ((permisos().tiradas) || {})[t.id] !== false);
+  const temasPermitidos = () => TEMAS.filter((t) => t.id !== 'libre' || permisos().temaLibre !== false);
+  /* cupo diario de lecturas (se cuenta en este dispositivo) */
+  const diaChile = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Santiago' }).format(new Date());
+  function lecturasHoy() { try { const c = JSON.parse(localStorage.getItem('arcana.cupo.v1')); return c && c.dia === diaChile() ? c.n : 0; } catch (e) { return 0; } }
+  function contarLectura() { try { localStorage.setItem('arcana.cupo.v1', JSON.stringify({ dia: diaChile(), n: lecturasHoy() + 1 })); } catch (e) { /* sigue igual */ } }
+  const tope = () => { const l = permisos().lecturasDia; return typeof l === 'number' ? l : null; };
+  const cupoAgotado = () => tope() !== null && lecturasHoy() >= tope();
+  function textoCupo() {
+    const t = tope(); if (t === null) return '';
+    const p = NOMBRE_PERFIL[window.Nube.perfil()];
+    const pl = (n) => (n === 1 ? 'lectura' : 'lecturas');
+    return cupoAgotado() ? `Hoy ya hiciste tus ${t} ${pl(t)} del perfil ${p}. Mañana vuelves a tener ${t}.` : `Perfil ${p}: te quedan ${t - lecturasHoy()} de ${t} ${pl(t)} hoy.`;
+  }
+  function pintarCupo() { const n = $('#cupoNota'); if (!n) return; const x = textoCupo(); n.hidden = !x; n.textContent = x; n.classList.toggle('agotado', cupoAgotado()); }
   const activos = () => MAZOS.filter((m) => !m.pendiente && mazoActivo(m.id));
   const pintarVitrina = () => { $('#vitrina').innerHTML = activos().map((m) =>
     `<li class="vit tema-${m.id}"><span class="abanico" aria-hidden="true">${m.muestra.slice(0, 3).map((i) => carta(cara(i, m.id, false), m.id)).join('')}</span>
@@ -295,12 +313,14 @@
   pintarListaMazos();
   $('#listaMazos').addEventListener('click', (e) => {
     const b = e.target.closest('[data-mazo]'); if (!b) return;
+    if (cupoAgotado()) { aviso(textoCupo()); return; }
     estado.mazo = b.dataset.mazo; roce(); ir('intencion');
   });
 
   /* ---------- temas ---------- */
   function pintarTemas() {
-    $('#listaTemas').innerHTML = TEMAS.map((t) =>
+    if (!temasPermitidos().some((t) => t.id === estado.tema)) estado.tema = 'general';
+    $('#listaTemas').innerHTML = temasPermitidos().map((t) =>
       `<button type="button" class="tema-p" role="radio" aria-checked="${t.id === estado.tema}" data-tema="${t.id}" tabindex="${t.id === estado.tema ? 0 : -1}"><img src="${src(estado.mazo, TEMA_IMG[t.id])}" alt="" decoding="async"><span>${t.nombre}</span></button>`).join('');
   }
   pintarTemas();
@@ -309,12 +329,12 @@
     estado.tema = b.dataset.tema; pintarTemas(); $(`[data-tema="${estado.tema}"]`).focus();
   });
   $('#listaTemas').addEventListener('keydown', (e) => {
-    const i = TEMAS.findIndex((t) => t.id === estado.tema);
+    const TP = temasPermitidos(), i = TP.findIndex((t) => t.id === estado.tema);
     let j = i;
-    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') j = (i + 1) % TEMAS.length;
-    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') j = (i - 1 + TEMAS.length) % TEMAS.length;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') j = (i + 1) % TP.length;
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') j = (i - 1 + TP.length) % TP.length;
     else return;
-    e.preventDefault(); estado.tema = TEMAS[j].id; pintarTemas(); $(`[data-tema="${estado.tema}"]`).focus();
+    e.preventDefault(); estado.tema = TP[j].id; pintarTemas(); $(`[data-tema="${estado.tema}"]`).focus();
   });
 
   /* ---------- tiradas ---------- */
@@ -325,7 +345,7 @@
   };
   function pintarTiradas() {
     const back = reverso(estado.mazo);
-    $('#listaTiradas').innerHTML = TIRADAS.map((t) =>
+    $('#listaTiradas').innerHTML = tiradasPermitidas().map((t) =>
       `<button type="button" class="tirada t-${t.id} revela visto" data-tirada="${t.id}">
         <span class="tendido" aria-hidden="true">${t.pos.map((p) => `<span class="puesto">${carta(back, estado.mazo)}<em>${p.nombre}</em></span>`).join('')}</span>
         <span class="precio">${TIRADA_INFO[t.id].min}</span>
@@ -337,6 +357,7 @@
   pintarTiradas();
   $('#listaTiradas').addEventListener('click', (e) => {
     const b = e.target.closest('[data-tirada]'); if (!b) return;
+    if (cupoAgotado()) { aviso(textoCupo()); return; }
     estado.tirada = TIRADAS.find((t) => t.id === b.dataset.tirada); ir('barajar');
   });
 
@@ -483,13 +504,14 @@
     h += `<section><h3>Para seguir explorando</h3><ul>${tema.acciones.map((a) => `<li>${a}</li>`).join('')}</ul></section>`;
     h += `<p class="descargo">Esta es una interpretación simbólica, pensada para reflexionar. No predice lo que va a pasar ni reemplaza el consejo de un profesional.</p>`;
     h += `<section class="cierre"><h3>Tu reflexión</h3>
-      <label class="campo" for="notaLectura" style="margin-top:8px">Una nota privada <span>(opcional)</span></label>
-      <textarea id="notaLectura" rows="3" maxlength="1000" placeholder="¿Qué te llevas de esta lectura?"></textarea>
+      ${permisos().diario === false ? '' : `<label class="campo" for="notaLectura" style="margin-top:8px">Una nota privada <span>(opcional)</span></label>
+      <textarea id="notaLectura" rows="3" maxlength="1000" placeholder="¿Qué te llevas de esta lectura?"></textarea>`}
       <div class="acciones">
-        <button type="button" class="btn primario" id="btnGuardar">Guardar en mi espacio</button>
+        ${permisos().diario === false ? '' : '<button type="button" class="btn primario" id="btnGuardar">Guardar en mi espacio</button>'}
         <button type="button" class="btn" id="btnOtra">Hacer otra lectura</button>
       </div></section>`;
     const el = $('#interpretacion'); el.innerHTML = h; el.hidden = false;
+    contarLectura(); pintarCupo();
     window.Nube.lectura({ mazo: mz, tema: estado.tema, tirada: estado.tirada.id, cartas: ids, pregunta: !!estado.pregunta });
   }
 
@@ -504,6 +526,8 @@
     if (estado.guardada) {
       const r = a.find((x) => x.id === estado.guardada); if (r) r.nota = nota;
     } else {
+      const maxG = permisos().guardadas;
+      if (typeof maxG === 'number' && a.length >= maxG) { aviso(`Tu perfil ${NOMBRE_PERFIL[window.Nube.perfil()]} guarda hasta ${maxG} lecturas. Borra alguna en Mi espacio para guardar otra.`); return; }
       estado.guardada = 'l' + Date.now();
       a.unshift({ id: estado.guardada, fecha: new Date().toISOString(), mazo: estado.mazo, tema: estado.tema, tirada: estado.tirada.id,
         cartas: cartasDeLectura(), pregunta: estado.pregunta, nota });
@@ -572,27 +596,72 @@
   if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
   window.addEventListener('pageshow', (e) => { if (e.persisted) location.reload(); });
   /* ---------- interruptores y cuenta (solo con la nube conectada) ---------- */
+  const ERR_CUENTA = { 'auth/invalid-credential': 'El correo o la contraseña no coinciden.', 'auth/wrong-password': 'El correo o la contraseña no coinciden.', 'auth/user-not-found': 'El correo o la contraseña no coinciden.',
+    'auth/email-already-in-use': 'Ese correo ya tiene una cuenta. Prueba entrar, o usa «Olvidé mi contraseña».', 'auth/weak-password': 'La contraseña debe tener al menos 8 caracteres.',
+    'auth/invalid-email': 'Revisa que el correo esté bien escrito.', 'auth/too-many-requests': 'Demasiados intentos. Espera unos minutos e intenta de nuevo.',
+    'auth/operation-not-allowed': 'Entrar con correo todavía no está activado.', 'auth/network-request-failed': 'Sin conexión. Revisa tu internet e intenta de nuevo.' };
+  let modoCuenta = 'entrar';
+  function resumenPerfil() {
+    const P = permisos(), t = tiradasPermitidas().length, m = MAZOS.filter((x) => !x.pendiente && ((P.mazos || {})[x.id] !== false)).length;
+    return `${t} ${t === 1 ? 'tirada' : 'tiradas'}, ${m} ${m === 1 ? 'mazo' : 'mazos'}, ${typeof P.lecturasDia === 'number' ? P.lecturasDia + (P.lecturasDia === 1 ? ' lectura al día' : ' lecturas al día') : 'lecturas sin límite'}${P.diario === false ? '' : typeof P.guardadas === 'number' ? ', hasta ' + P.guardadas + (P.guardadas === 1 ? ' guardada' : ' guardadas') : ', diario sin límite'}`;
+  }
   function pintarCuenta() {
     const caja = $('#cuentaEstado'); if (!caja) return;
-    const u = window.Nube.usuario();
-    caja.innerHTML = u
-      ? `<p>Sesión iniciada como <b>${esc(u.email)}</b>. Tu carta del día se mantiene volteada al actualizar. Tus lecturas y notas siguen guardadas solo en este dispositivo.</p>
-         <div class="acciones"><button type="button" class="btn chico" id="btnSalir">Salir</button><button type="button" class="btn chico" id="btnBorrarFicha">Borrar mi ficha</button></div>`
-      : `<p>Entra con Google para que tu carta del día se mantenga volteada al actualizar la página. Es opcional: tus lecturas y notas siguen guardándose solo en este dispositivo.</p>
-         <div class="acciones"><button type="button" class="btn primario chico" id="btnEntrar">Entrar con Google</button></div>`;
+    const u = window.Nube.usuario(), foco = document.activeElement;
+    if (!u && foco && caja.contains(foco) && foco.tagName === 'INPUT') return; // no borrar lo que la persona está escribiendo
+    if (u) {
+      const p = window.Nube.perfil();
+      caja.innerHTML = `<p>Sesión iniciada como <b>${esc(u.email)}</b>. Tu carta del día se mantiene volteada al actualizar. Tus lecturas y notas siguen guardadas solo en este dispositivo.</p>
+         <p>Tu perfil: <b>${NOMBRE_PERFIL[p]}</b> · ${resumenPerfil()}.</p>
+         <div class="acciones"><button type="button" class="btn chico" id="btnSalir">Salir</button><button type="button" class="btn chico" id="btnBorrarFicha">Borrar mi ficha</button></div>`;
+      return;
+    }
+    const crear = modoCuenta === 'crear';
+    caja.innerHTML = `<p>Entra para que tu carta del día se mantenga volteada al actualizar la página. Es opcional: tus lecturas y notas siguen guardándose solo en este dispositivo.</p>
+      <div class="acciones"><button type="button" class="btn primario chico" id="btnEntrar">Entrar con Google</button></div>
+      <p class="o">o con tu correo y contraseña</p>
+      <form id="formCorreo" novalidate>
+        ${crear ? '<label class="campo" for="cNombre">Tu nombre <span>(opcional)</span></label><input id="cNombre" type="text" maxlength="80" autocomplete="name">' : ''}
+        <label class="campo" for="cCorreo">Correo</label><input id="cCorreo" type="email" autocomplete="email" inputmode="email" required>
+        <label class="campo" for="cClave">Contraseña${crear ? ' <span>(mínimo 8 caracteres)</span>' : ''}</label><input id="cClave" type="password" autocomplete="${crear ? 'new-password' : 'current-password'}" minlength="8" required>
+        <p class="error" id="cMsg" role="alert" aria-live="polite"></p>
+        <div class="acciones"><button type="submit" class="btn primario chico">${crear ? 'Crear mi cuenta' : 'Entrar'}</button>
+          <button type="button" class="btn chico" id="btnModo">${crear ? 'Ya tengo cuenta' : 'Crear una cuenta'}</button>
+          ${crear ? '' : '<button type="button" class="btn chico" id="btnOlvide">Olvidé mi contraseña</button>'}</div>
+      </form>`;
   }
   const cuentaCaja = $('#cuentaCaja');
-  if (cuentaCaja) cuentaCaja.addEventListener('click', async (e) => {
-    const id = e.target.id;
-    try {
-      if (id === 'btnEntrar') { await window.Nube.entrar(); aviso('Sesión iniciada.'); }
-      else if (id === 'btnSalir') { await window.Nube.salir(); aviso('Saliste de tu cuenta.'); }
-      else if (id === 'btnBorrarFicha') {
-        if (e.target.dataset.seguro !== '1') { e.target.dataset.seguro = '1'; e.target.textContent = 'Toca de nuevo para borrar'; return; }
-        await window.Nube.borrarMiFicha(); await window.Nube.salir(); aviso('Tu ficha se borró.');
-      }
-    } catch (err) { aviso('No se pudo completar. Intenta de nuevo.'); }
-  });
+  const msgCuenta = (t, ok) => { const m = $('#cMsg'); if (m) { m.textContent = t; m.classList.toggle('ok', !!ok); } };
+  if (cuentaCaja) {
+    cuentaCaja.addEventListener('click', async (e) => {
+      const id = e.target.id;
+      try {
+        if (id === 'btnEntrar') { await window.Nube.entrar(); aviso('Sesión iniciada.'); }
+        else if (id === 'btnSalir') { await window.Nube.salir(); aviso('Saliste de tu cuenta.'); }
+        else if (id === 'btnModo') { modoCuenta = modoCuenta === 'crear' ? 'entrar' : 'crear'; if (document.activeElement) document.activeElement.blur(); pintarCuenta(); }
+        else if (id === 'btnOlvide') {
+          const c = ($('#cCorreo').value || '').trim();
+          if (!c) { msgCuenta('Escribe tu correo arriba y vuelve a pulsar.'); return; }
+          await window.Nube.recuperarClave(c); msgCuenta('Si ese correo tiene cuenta, te enviamos un enlace para cambiar la contraseña. Revisa también el spam.', true);
+        } else if (id === 'btnBorrarFicha') {
+          if (e.target.dataset.seguro !== '1') { e.target.dataset.seguro = '1'; e.target.textContent = 'Toca de nuevo para borrar'; return; }
+          await window.Nube.borrarMiFicha(); await window.Nube.salir(); aviso('Tu ficha se borró.');
+        }
+      } catch (err) { if (id === 'btnOlvide') msgCuenta(ERR_CUENTA[err && err.code] || 'No se pudo enviar. Intenta de nuevo.'); else aviso(ERR_CUENTA[err && err.code] || 'No se pudo completar. Intenta de nuevo.'); }
+    });
+    cuentaCaja.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const correo = ($('#cCorreo').value || '').trim(), clave = $('#cClave').value || '', crear = modoCuenta === 'crear';
+      if (!correo || !clave) { msgCuenta('Escribe tu correo y tu contraseña.'); return; }
+      if (crear && clave.length < 8) { msgCuenta(ERR_CUENTA['auth/weak-password']); return; }
+      const boton = e.target.querySelector('[type=submit]'); boton.disabled = true;
+      if (document.activeElement) document.activeElement.blur();
+      try {
+        if (crear) { await window.Nube.crearCuenta(correo, clave, ($('#cNombre') || {}).value || ''); aviso('Cuenta creada. Te enviamos un correo para confirmar tu dirección.'); }
+        else { await window.Nube.entrarConCorreo(correo, clave); aviso('Sesión iniciada.'); }
+      } catch (err) { boton.disabled = false; msgCuenta(ERR_CUENTA[err && err.code] || 'No se pudo completar. Intenta de nuevo.'); }
+    });
+  }
   window.Nube.alCambiarUsuario(pintarCuenta);
 
   function aplicarFunciones(f) {
@@ -600,7 +669,7 @@
     r.toggle('f-sin-hoy', f.cartaDelDia === false);
     r.toggle('f-sin-desfile', f.desfile === false);
     r.toggle('f-sin-planes', f.planes === false);
-    pintarVitrina(); pintarDesfile(); pintarListaMazos();
+    pintarVitrina(); pintarDesfile(); pintarListaMazos(); pintarTiradas(); pintarTemas(); pintarCupo();
     const av = $('#avisoSitio');
     if (av) { const on = !!(f.aviso && f.aviso.activo && f.aviso.texto); av.hidden = !on; av.textContent = on ? f.aviso.texto : ''; }
     if (cuentaCaja) cuentaCaja.hidden = !(window.Nube.activa && f.cuentas !== false);
