@@ -458,7 +458,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 @media (min-width: 720px) {
   .desfile { margin-left: -32px; margin-right: -32px; }
   .pista img { height: 280px; }
-  .hoy { grid-template-columns: auto minmax(0, 26em); justify-content: center; align-items: center; gap: 56px; }
+  .hoy { grid-template-columns: auto minmax(0, 32em); justify-content: center; align-items: center; gap: 56px; }
   .hoy-texto { text-align: left; }
   .hoy-texto .acciones { justify-content: flex-start; }
   .temas-g { grid-template-columns: repeat(5, 1fr); }
@@ -593,3 +593,13 @@ body.interior main::after { content: ''; position: fixed; left: -300px; top: -26
 .cuenta input:focus-visible { outline: 2px solid var(--oro); outline-offset: 2px; }
 .cuenta .error { min-height: 1.3em; color: #f0a39a; }
 .cuenta .error.ok { color: var(--oro-claro); }
+
+/* carta del día: lectura más completa */
+.hoy-texto { max-width: 36em; }
+.hoy-bloques { display: grid; gap: 14px; margin-top: 18px; text-align: left; }
+.hoy-bloques > div { padding: 14px 16px; border-radius: 14px; border: 1px solid var(--linea); background: rgba(var(--panel), .4); }
+.hoy-bloques b { display: block; font-size: .74rem; font-weight: 500; letter-spacing: .2em; text-transform: uppercase; color: var(--oro); margin-bottom: 6px; }
+.hoy-bloques p { margin: 0; font-size: 1.02rem; line-height: 1.6; }
+.hoy-bloques .noche { border-color: color-mix(in srgb, var(--oro) 55%, transparent); background: rgba(var(--panel), .65); }
+.hoy-bloques .noche p { font-family: var(--serif); font-style: italic; font-size: 1.2rem; color: var(--oro-claro); }
+.hoy-nota { margin-top: 14px; font-size: .85rem; color: var(--lavanda); }

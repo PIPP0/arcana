@@ -266,8 +266,18 @@
     function mostrar() {
       btn.classList.add('vista-carta');
       btn.setAttribute('aria-label', `Tu carta de hoy: ${k.nombre}. Ampliar`);
+      const lente = [
+        `Hoy te acompaña ${k.hilo}. Fíjate dónde aparece: en una conversación, en una decisión pequeña, en cómo te tratas a ti.`,
+        `Si tuvieras que ponerle nombre a tu día, esta carta sugiere ${k.hilo}. Mira dónde se asoma, aunque sea en algo pequeño.`,
+        `Lleva ${k.hilo} como una lente: ¿cómo se ve tu jornada desde ahí?`][g.carta % 3];
       $('#hoyTexto').innerHTML = `<p class="pos">Tu carta de hoy</p><h3>${k.nombre}</h3><p class="claves">${k.claves}</p>
-        <p class="mensaje">${k.luz}</p>
+        <p class="mensaje">${k.esencia}</p>
+        <div class="hoy-bloques">
+          <div><b>Para tu día</b><p>${lente} ${k.luz}</p></div>
+          <div><b>Ten presente</b><p>${k.sombra}</p></div>
+          <div class="noche"><b>Para esta noche</b><p>${k.pregunta}</p></div>
+        </div>
+        <p class="hoy-nota">Una imagen para acompañar tu día, no una predicción.</p>
         <div class="acciones"><button type="button" class="btn primario" data-ir="mazo">Profundizar con tres cartas</button></div>`;
     }
     btn.addEventListener('click', () => {
