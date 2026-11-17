@@ -570,6 +570,15 @@ body.interior main::after { content: ''; position: fixed; left: -300px; top: -26
   .ruta .r-mazo { padding-left: 6px; }
 }
 
+/* ---------- interruptores del admin, aviso y cuenta ---------- */
+.f-sin-hoy #hoy, .f-sin-hoy a[href="#hoy"], .f-sin-desfile .desfile, .f-sin-planes #planes { display: none; }
+.aviso-sitio { padding: 10px 16px; text-align: center; font-size: .95rem; color: #14122a; background: linear-gradient(90deg, var(--oro), var(--oro-claro), var(--oro)); }
+.cuenta { margin-top: 24px; padding: 22px; border-radius: 18px; border: 1px solid var(--linea); background: rgba(var(--panel), .45); }
+.cuenta h3 { font-size: 1.3rem; }
+.cuenta p { margin-top: 8px; color: var(--lavanda); font-size: .96rem; }
+.cuenta b { color: var(--marfil); font-weight: 500; }
+.cuenta .acciones { margin-top: 14px; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }

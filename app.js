@@ -171,6 +171,8 @@
     if (id === 'intencion') pintarTemas();
     if (id === 'tirada') pintarTiradas();
     pintarRuta(id);
+    window.Nube.vista(id);
+    if (id === 'barajar') window.Nube.eleccion({ mazo: estado.mazo, tema: estado.tema, tirada: estado.tirada && estado.tirada.id });
     $$('.vista').forEach((v) => { v.hidden = v.id !== 'v-' + id; });
     document.body.className = (CON_TEMA.includes(id) ? 'tema-' + estado.mazo : '') + (id === 'elegir' ? ' con-fija' : '') + (id === 'inicio' ? '' : ' interior');
     window.scrollTo(0, 0);
@@ -219,13 +221,17 @@
   const IMG1 = comoImg(CIELO1), IMG2 = comoImg(CIELO2);
   $$('.rueda').forEach((el) => { el.innerHTML = `<img alt="" src="${el.classList.contains('dos') ? IMG2 : IMG1}">`; });
   document.documentElement.style.setProperty('--astro', `url("${IMG1}")`);
-  $('#vitrina').innerHTML = MAZOS.filter((m) => !m.pendiente).map((m) =>
+  const mazoActivo = (id) => ((window.Nube.funciones().mazos) || {})[id] !== false;
+  const activos = () => MAZOS.filter((m) => !m.pendiente && mazoActivo(m.id));
+  const pintarVitrina = () => { $('#vitrina').innerHTML = activos().map((m) =>
     `<li class="vit tema-${m.id}"><span class="abanico" aria-hidden="true">${m.muestra.slice(0, 3).map((i) => carta(cara(i, m.id, false), m.id)).join('')}</span>
-      <p class="precio">${m.anio} · ${m.lugar}</p><h3>${m.nombre}</h3><p>${m.tecnica}. 78 cartas.</p></li>`).join('');
+      <p class="precio">${m.anio} · ${m.lugar}</p><h3>${m.nombre}</h3><p>${m.tecnica}. 78 cartas.</p></li>`).join(''); };
+  pintarVitrina();
 
   /* desfile de cartas reales */
   const DESFILE = [['rws', 17], ['dodal', 19], ['sola', 0], ['rws', 2], ['dodal', 1], ['sola', 13], ['rws', 36], ['dodal', 10], ['sola', 21], ['rws', 19], ['dodal', 18], ['sola', 6], ['rws', 6], ['dodal', 64]];
-  $('#desfile').innerHTML = DESFILE.concat(DESFILE).map(([m, i]) => `<img src="${src(m, i)}" alt="" loading="lazy" decoding="async">`).join('');
+  const pintarDesfile = () => { const D = DESFILE.filter(([m]) => mazoActivo(m)); $('#desfile').innerHTML = D.concat(D).map(([m, i]) => `<img src="${src(m, i)}" alt="" loading="lazy" decoding="async">`).join(''); };
+  pintarDesfile();
 
   /* carta del día: la misma durante todo el día, en este dispositivo */
   (function () {
@@ -248,7 +254,14 @@
     }
     btn.addEventListener('click', () => {
       if (btn.classList.contains('vista-carta')) { ampliar(g.carta, 'rws'); return; }
-      roce(0.22); mostrar();
+      roce(0.22); mostrar(); window.Nube.cartaHoy();
+      if (window.Nube.usuario()) guardarVista(true);
+    });
+    function guardarVista(v) { g.vista = v; try { localStorage.setItem('arcana.hoy.v1', JSON.stringify(g)); } catch (e) { /* sigue igual */ } }
+    window.Nube.alCambiarUsuario((u) => {
+      if (u && btn.classList.contains('vista-carta')) guardarVista(true);
+      else if (u && g.vista) mostrar();
+      else if (!u && g.vista) guardarVista(false);
     });
   })();
 
@@ -271,14 +284,15 @@
   })();
 
   /* ---------- mazos ---------- */
-  $('#listaMazos').innerHTML = MAZOS.map((m) => m.pendiente
+  const pintarListaMazos = () => { $('#listaMazos').innerHTML = MAZOS.filter((m) => m.pendiente || mazoActivo(m.id)).map((m) => m.pendiente
     ? `<div class="mazo tema-${m.id}"><span class="ficha"><span class="precio">${m.anio} · ${m.lugar}</span><h3>${m.nombre}</h3><p>${m.desc}</p><span class="etiqueta">Se está cargando · disponible muy pronto</span></span></div>`
     : `<button type="button" class="mazo tema-${m.id}" data-mazo="${m.id}">
       <span class="abanico cinco" aria-hidden="true">${m.muestra.map((i) => carta(cara(i, m.id, false), m.id)).join('')}</span>
       <span class="ficha"><span class="precio">${m.anio} · ${m.lugar}</span><h3>${m.nombre}</h3>
         <p>${m.desc}</p><span class="etiqueta">78 cartas · ${m.tecnica}</span>
         <span class="elegir">Leer con este mazo →</span></span>
-    </button>`).join('');
+    </button>`).join(''); };
+  pintarListaMazos();
   $('#listaMazos').addEventListener('click', (e) => {
     const b = e.target.closest('[data-mazo]'); if (!b) return;
     estado.mazo = b.dataset.mazo; roce(); ir('intencion');
@@ -476,6 +490,7 @@
         <button type="button" class="btn" id="btnOtra">Hacer otra lectura</button>
       </div></section>`;
     const el = $('#interpretacion'); el.innerHTML = h; el.hidden = false;
+    window.Nube.lectura({ mazo: mz, tema: estado.tema, tirada: estado.tirada.id, cartas: ids, pregunta: !!estado.pregunta });
   }
 
   /* ---------- guardar / historial (solo en este dispositivo) ---------- */
@@ -556,5 +571,43 @@
   /* Al actualizar, la página parte de cero: arriba y sin nada tocado. */
   if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
   window.addEventListener('pageshow', (e) => { if (e.persisted) location.reload(); });
+  /* ---------- interruptores y cuenta (solo con la nube conectada) ---------- */
+  function pintarCuenta() {
+    const caja = $('#cuentaEstado'); if (!caja) return;
+    const u = window.Nube.usuario();
+    caja.innerHTML = u
+      ? `<p>Sesión iniciada como <b>${esc(u.email)}</b>. Tu carta del día se mantiene volteada al actualizar. Tus lecturas y notas siguen guardadas solo en este dispositivo.</p>
+         <div class="acciones"><button type="button" class="btn chico" id="btnSalir">Salir</button><button type="button" class="btn chico" id="btnBorrarFicha">Borrar mi ficha</button></div>`
+      : `<p>Entra con Google para que tu carta del día se mantenga volteada al actualizar la página. Es opcional: tus lecturas y notas siguen guardándose solo en este dispositivo.</p>
+         <div class="acciones"><button type="button" class="btn primario chico" id="btnEntrar">Entrar con Google</button></div>`;
+  }
+  const cuentaCaja = $('#cuentaCaja');
+  if (cuentaCaja) cuentaCaja.addEventListener('click', async (e) => {
+    const id = e.target.id;
+    try {
+      if (id === 'btnEntrar') { await window.Nube.entrar(); aviso('Sesión iniciada.'); }
+      else if (id === 'btnSalir') { await window.Nube.salir(); aviso('Saliste de tu cuenta.'); }
+      else if (id === 'btnBorrarFicha') {
+        if (e.target.dataset.seguro !== '1') { e.target.dataset.seguro = '1'; e.target.textContent = 'Toca de nuevo para borrar'; return; }
+        await window.Nube.borrarMiFicha(); await window.Nube.salir(); aviso('Tu ficha se borró.');
+      }
+    } catch (err) { aviso('No se pudo completar. Intenta de nuevo.'); }
+  });
+  window.Nube.alCambiarUsuario(pintarCuenta);
+
+  function aplicarFunciones(f) {
+    const r = document.documentElement.classList;
+    r.toggle('f-sin-hoy', f.cartaDelDia === false);
+    r.toggle('f-sin-desfile', f.desfile === false);
+    r.toggle('f-sin-planes', f.planes === false);
+    pintarVitrina(); pintarDesfile(); pintarListaMazos();
+    const av = $('#avisoSitio');
+    if (av) { const on = !!(f.aviso && f.aviso.activo && f.aviso.texto); av.hidden = !on; av.textContent = on ? f.aviso.texto : ''; }
+    if (cuentaCaja) cuentaCaja.hidden = !(window.Nube.activa && f.cuentas !== false);
+    const ma = $('#medicionAviso'); if (ma) ma.hidden = !(window.Nube.activa && f.medicion !== false);
+    pintarCuenta();
+  }
+  window.Nube.alCambiarFunciones(aplicarFunciones);
+
   ir('inicio', false);
 })();

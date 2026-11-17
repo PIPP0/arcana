@@ -9,10 +9,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,500;1,6..96,400&family=Jost:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=14">
+<link rel="stylesheet" href="styles.css?v=15">
 </head>
 <body>
 <a class="salto" href="#contenido">Saltar al contenido</a>
+<div class="aviso-sitio" id="avisoSitio" role="status" hidden></div>
 
 <header class="barra">
   <button class="marca" type="button" data-ir="inicio" aria-label="ARCANA, ir al inicio">ARCANA</button>
@@ -121,7 +122,7 @@
       <h2>Una lectura en la que puedes confiar</h2>
       <ul class="garantias">
         <li><h3>Sin promesas falsas</h3><p>Las cartas no predicen el futuro. Te ofrecen símbolos e historias para pensar el tuyo.</p></li>
-        <li><h3>Tu intimidad es tuya</h3><p>No pedimos cuenta ni correo. Tu pregunta y tu diario se quedan en tu dispositivo.</p></li>
+        <li><h3>Tu intimidad es tuya</h3><p>No necesitas cuenta. Tu pregunta y tu diario se quedan en tu dispositivo y no se envían a ningún servidor.</p></li>
         <li><h3>Azar de verdad</h3><p>El mazo se mezcla al azar antes de que elijas. Nadie decide por ti qué carta sale.</p></li>
         <li><h3>Sin presiones</h3><p>Nada de cuentas regresivas ni mensajes de miedo. Lees cuando quieres y te vas cuando quieres.</p></li>
       </ul>
@@ -220,12 +221,14 @@
     <div class="cabecera"><button type="button" class="volver" data-ir="inicio">← Volver</button></div>
     <h2 tabindex="-1">Mi espacio</h2>
     <p class="bajada">Tus lecturas guardadas viven solo en este dispositivo. Puedes borrarlas cuando quieras.</p>
+    <div class="cuenta" id="cuentaCaja" hidden><h3>Tu cuenta</h3><div id="cuentaEstado"></div></div>
     <div id="historial"></div>
   </section>
 </main>
 
 <footer class="pie">
   <p>ARCANA ofrece interpretaciones simbólicas para la reflexión personal y el entretenimiento. No predice el futuro ni reemplaza el consejo médico, legal, financiero o psicológico.</p>
+  <p class="tenue" id="medicionAviso" hidden>Medimos de forma anónima qué pasos y mazos se usan, para mejorar el sitio. Nunca tu pregunta ni tus notas. Si tu navegador pide «no rastrear», no medimos nada.</p>
   <ul class="creditos" id="creditos"></ul>
   <p class="tenue">Demostración · Imágenes de dominio público, obtenidas de Wikimedia Commons</p>
 </footer>
@@ -237,8 +240,10 @@
 
 <div class="aviso" id="aviso" role="status" aria-live="polite"></div>
 
-<script src="cards.js?v=14"></script>
-<script src="menores.js?v=14"></script>
-<script src="app.js?v=14"></script>
+<script src="nube-config.js?v=15"></script>
+<script src="nube.js?v=15"></script>
+<script src="cards.js?v=15"></script>
+<script src="menores.js?v=15"></script>
+<script src="app.js?v=15"></script>
 </body>
 </html>

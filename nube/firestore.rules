@@ -1,0 +1,101 @@
+rules_version = '2';
+// ARCANA — reglas de Firestore.
+// Nadie lee datos de otras personas: solo el admin (correo verificado, entrando con Google).
+// El sitio solo escribe medición anónima y cada persona su propia ficha. Nunca se guardan preguntas ni notas.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function verificado() { return request.auth.token.email_verified == true; }
+    function miCorreo() { return request.auth.token.email.lower(); }
+    function esAdmin() {
+      return signedIn() && verificado()
+        && request.auth.token.firebase.sign_in_provider == 'google.com'
+        && miCorreo() in get(/databases/$(database)/documents/config/admin).data.correos;
+    }
+    function campoEn(campo, lista) {
+      return !(campo in request.resource.data) || request.resource.data[campo] in lista;
+    }
+
+    // Quién es admin: solo la lista de correos en config/admin. Se edita desde la consola de Firebase.
+    match /config/admin {
+      allow read: if signedIn() && verificado() && miCorreo() in resource.data.correos;
+      allow write: if false;
+    }
+
+    // Interruptores del sitio: los lee cualquiera (el sitio los necesita), solo el admin los cambia.
+    match /config/funciones {
+      allow read: if true;
+      allow write: if esAdmin();
+    }
+
+    // Una visita: qué pasos recorrió. Anónima (id aleatorio del navegador). Sin textos libres.
+    match /sesiones/{sid} {
+      allow read: if esAdmin();
+      allow create: if signedIn()
+        && sid.size() >= 16 && sid.size() <= 32
+        && request.resource.data.keys().hasOnly(['anon', 'dia', 'inicio', 'ultima', 'disp', 'vistas', 'mazo', 'tema', 'tirada', 'lecturas', 'cartaHoy'])
+        && request.resource.data.keys().hasAll(['anon', 'dia', 'inicio', 'ultima', 'disp', 'vistas', 'lecturas'])
+        && request.resource.data.anon is string && request.resource.data.anon.size() <= 40
+        && request.resource.data.dia is string && request.resource.data.dia.size() == 10
+        && request.resource.data.inicio == request.time && request.resource.data.ultima == request.time
+        && request.resource.data.disp in ['movil', 'escritorio']
+        && request.resource.data.vistas is map && request.resource.data.vistas.size() <= 12
+        && request.resource.data.lecturas is int && request.resource.data.lecturas >= 0 && request.resource.data.lecturas <= 100
+        && campoEn('mazo', ['rws', 'dodal', 'sola'])
+        && campoEn('tema', ['general', 'amor', 'trabajo', 'crecimiento', 'decisiones', 'libre'])
+        && campoEn('tirada', ['una', 'tiempo', 'perspectivas'])
+        && campoEn('cartaHoy', [true, false]);
+      allow update: if signedIn()
+        && request.resource.data.keys().hasOnly(['anon', 'dia', 'inicio', 'ultima', 'disp', 'vistas', 'mazo', 'tema', 'tirada', 'lecturas', 'cartaHoy'])
+        && request.resource.data.anon == resource.data.anon
+        && request.resource.data.dia == resource.data.dia
+        && request.resource.data.inicio == resource.data.inicio
+        && request.resource.data.ultima == request.time
+        && request.resource.data.vistas is map && request.resource.data.vistas.size() <= 12
+        && request.resource.data.lecturas is int && request.resource.data.lecturas >= resource.data.lecturas && request.resource.data.lecturas <= 100
+        && campoEn('mazo', ['rws', 'dodal', 'sola'])
+        && campoEn('tema', ['general', 'amor', 'trabajo', 'crecimiento', 'decisiones', 'libre'])
+        && campoEn('tirada', ['una', 'tiempo', 'perspectivas'])
+        && campoEn('cartaHoy', [true, false]);
+      allow delete: if false;
+    }
+
+    // Una lectura completada: mazo, tema, tirada y cartas. Sin la pregunta (solo si hubo una o no).
+    match /lecturas/{id} {
+      allow read: if esAdmin();
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['anon', 'dia', 'fecha', 'mazo', 'tema', 'tirada', 'cartas', 'pregunta', 'disp'])
+        && request.resource.data.keys().hasAll(['anon', 'dia', 'fecha', 'mazo', 'tema', 'tirada', 'cartas', 'pregunta', 'disp'])
+        && request.resource.data.anon is string && request.resource.data.anon.size() <= 40
+        && request.resource.data.dia is string && request.resource.data.dia.size() == 10
+        && request.resource.data.fecha == request.time
+        && request.resource.data.mazo in ['rws', 'dodal', 'sola']
+        && request.resource.data.tema in ['general', 'amor', 'trabajo', 'crecimiento', 'decisiones', 'libre']
+        && request.resource.data.tirada in ['una', 'tiempo', 'perspectivas']
+        && request.resource.data.cartas is list && request.resource.data.cartas.size() >= 1 && request.resource.data.cartas.size() <= 3
+        && request.resource.data.pregunta is bool
+        && request.resource.data.disp in ['movil', 'escritorio'];
+      allow update, delete: if false;
+    }
+
+    // Personas que entraron con Google (opcional). Cada una ve y borra la suya; el admin las lee.
+    match /personas/{uid} {
+      allow read: if (signedIn() && request.auth.uid == uid) || esAdmin();
+      allow create: if signedIn() && request.auth.uid == uid && verificado()
+        && request.resource.data.keys().hasOnly(['nombre', 'email', 'creado', 'ultimoAcceso', 'accesos'])
+        && request.resource.data.keys().hasAll(['email', 'creado', 'ultimoAcceso', 'accesos'])
+        && request.resource.data.email == miCorreo()
+        && (!('nombre' in request.resource.data) || (request.resource.data.nombre is string && request.resource.data.nombre.size() <= 80))
+        && request.resource.data.creado == request.time && request.resource.data.ultimoAcceso == request.time
+        && request.resource.data.accesos == 1;
+      allow update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['nombre', 'email', 'creado', 'ultimoAcceso', 'accesos'])
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.creado == resource.data.creado
+        && request.resource.data.ultimoAcceso == request.time
+        && request.resource.data.accesos == resource.data.accesos + 1;
+      allow delete: if signedIn() && request.auth.uid == uid;
+    }
+  }
+}
