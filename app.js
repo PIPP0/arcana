@@ -275,9 +275,8 @@
         <div class="hoy-bloques">
           <div><b>Para tu día</b><p>${lente} ${k.luz}</p></div>
           <div><b>Ten presente</b><p>${k.sombra}</p></div>
-          <div class="noche"><b>Para esta noche</b><p>${k.pregunta}</p></div>
+          <div class="noche"><b>Una pregunta para ti</b><p>${k.pregunta}</p></div>
         </div>
-        <p class="hoy-nota">Una imagen para acompañar tu día, no una predicción.</p>
         <div class="acciones"><button type="button" class="btn primario" data-ir="mazo">Profundizar con tres cartas</button></div>`;
     }
     btn.addEventListener('click', () => {
