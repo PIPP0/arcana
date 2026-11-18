@@ -756,4 +756,22 @@
   window.Nube.alCambiarFunciones(aplicarFunciones);
 
   ir('inicio', false);
+
+  /* Al actualizar la portada, vuelve al mismo lugar en que estabas (el resto parte de cero). */
+  (function () {
+    const K = 'arcana.scroll.v1';
+    let y0 = 0;
+    try { const nav = performance.getEntriesByType('navigation')[0]; if (nav && nav.type === 'reload') y0 = Number(sessionStorage.getItem(K)) || 0; } catch (e) { /* sin almacenamiento */ }
+    let t = null;
+    const guardar = () => { const v = $('#v-inicio'); if (v && !v.hidden) { try { sessionStorage.setItem(K, String(Math.round(window.scrollY))); } catch (e) { /* sigue igual */ } } };
+    window.addEventListener('scroll', () => { if (t) return; t = setTimeout(() => { t = null; guardar(); }, 150); }, { passive: true });
+    window.addEventListener('pagehide', guardar);
+    window.addEventListener('beforeunload', guardar);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') guardar(); });
+    if (y0 > 0) {
+      const ir0 = () => window.scrollTo({ top: y0, left: 0, behavior: 'instant' });
+      ir0(); requestAnimationFrame(ir0);
+      window.addEventListener('load', () => { ir0(); setTimeout(ir0, 400); }, { once: true });
+    }
+  })();
 })();
