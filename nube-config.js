@@ -8,4 +8,4 @@ window.ARCANA_NUBE = {
 };
 
 /* Dirección del servidor de pagos (Worker de Cloudflare). Mientras sea null, el botón «Suscribirme» avisa que los cobros abren pronto. */
-window.ARCANA_PAGOS = null;
+window.ARCANA_PAGOS = "https://arcana-pagos.futuroiadesarrollo.workers.dev";
