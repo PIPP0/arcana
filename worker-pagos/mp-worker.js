@@ -98,6 +98,15 @@ async function fsLeer(env, ruta) {
   if (!r.ok) throw new Error('Firestore GET ' + ruta + ' -> ' + r.status);
   return decCampos((await r.json()).fields || {});
 }
+/* Documentos de una colección cuyo campo vale `valor` (hasta 500). */
+async function fsConsultar(env, coleccion, campo, valor) {
+  const r = await fetch(`${FS}:runQuery`, {
+    method: 'POST', headers: { Authorization: 'Bearer ' + (await tokenServicio(env)), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ structuredQuery: { from: [{ collectionId: coleccion }], where: { fieldFilter: { field: { fieldPath: campo }, op: 'EQUAL', value: enc(valor) } }, limit: 500 } })
+  });
+  if (!r.ok) throw new Error('Firestore runQuery ' + coleccion + ' -> ' + r.status);
+  return ((await r.json()) || []).filter((x) => x.document).map((x) => ({ id: x.document.name.split('/').pop(), datos: decCampos(x.document.fields || {}) }));
+}
 /* Escribe solo los campos indicados (updateMask). Con existe = true falla si el documento no existe. */
 async function fsEscribir(env, ruta, datos, existe) {
   const llaves = Object.keys(datos);
@@ -139,6 +148,7 @@ async function crearSuscripcion(request, env) {
   let b; try { b = await request.json(); } catch (e) { return json({ error: 'cuerpo inválido' }, 400); }
   const tier = String((b && b.tier) || '');
   if (!PLAN_PRECIOS[tier]) return json({ error: 'plan inválido' }, 400);
+  try { const f = await fsLeer(env, 'config/funciones'); if (f && f.cobros === false) return json({ error: 'Los cobros están en pausa por mantenimiento. Tu plan actual no se ve afectado; intenta de nuevo más tarde.' }, 503); } catch (e) { /* si no se puede leer, no se bloquea */ }
   const yo = await personaDeSesion(b && b.idToken);
   if (!yo) return json({ error: 'sesión inválida: entra a tu cuenta e intenta de nuevo' }, 401);
 
@@ -185,6 +195,32 @@ async function cancelarSuscripcion(request, env) {
   }
 }
 
+/* Lleva el estado real de una suscripción de Mercado Pago al plan de la cuenta. Devuelve 'activado', 'bajado' o 'sin-cambio'. */
+async function aplicarSuscripcion(env, info) {
+  const partes = String(info.external_reference || '').split('_'); // arc_{uid}_{token}
+  if (partes[0] !== 'arc' || partes.length < 3) return 'sin-cambio';
+  const token = partes[partes.length - 1], uid = partes.slice(1, -1).join('_');
+  const pendiente = await fsLeer(env, 'pagos/' + token);
+  if (!pendiente || pendiente.uid !== uid || !PLAN_PRECIOS[pendiente.tier]) return 'sin-cambio';
+  const monto = info.auto_recurring && Number(info.auto_recurring.transaction_amount);
+  if (monto !== PLAN_PRECIOS[pendiente.tier]) return 'sin-cambio'; // el monto cobrado debe ser el del plan
+  const persona = await fsLeer(env, 'personas/' + uid);
+  if (!persona) return 'sin-cambio';
+  await fsEscribir(env, 'pagos/' + token, { estado: info.status === 'authorized' ? 'activa' : info.status, mpStatus: info.status, actualizado: Date.now() }, true);
+  if (info.status === 'authorized') {
+    // un plan asignado a mano y más alto no se baja por un pago de un plan menor
+    const manualMayor = !persona.porPago && (RANGO[persona.perfil] || 0) > (RANGO[pendiente.tier] || 0);
+    if (manualMayor || (persona.porPago && persona.perfil === pendiente.tier && persona.mpId === String(info.id))) return 'sin-cambio';
+    await fsEscribir(env, 'personas/' + uid, { perfil: pendiente.tier, porPago: true, mpId: String(info.id) }, true);
+    return 'activado';
+  }
+  if ((info.status === 'cancelled' || info.status === 'paused') && persona.porPago && persona.mpId === String(info.id)) {
+    await fsEscribir(env, 'personas/' + uid, { perfil: 'free', porPago: false }, true);
+    return 'bajado';
+  }
+  return 'sin-cambio';
+}
+
 async function webhook(request, env, url) {
   let cuerpo = {};
   try { cuerpo = await request.json(); } catch (e) { /* algunas notificaciones llegan solo con la URL */ }
@@ -192,27 +228,7 @@ async function webhook(request, env, url) {
   const tipo = cuerpo.type || url.searchParams.get('type') || url.searchParams.get('topic');
   if (!id || (tipo !== 'preapproval' && tipo !== 'subscription_preapproval')) return json({ ok: true });
   try {
-    const info = await mp(env, 'GET', '/preapproval/' + encodeURIComponent(id)); // el estado real, no el que dice el aviso
-    const partes = String(info.external_reference || '').split('_'); // arc_{uid}_{token}
-    if (partes[0] !== 'arc' || partes.length < 3) return json({ ok: true });
-    const token = partes[partes.length - 1], uid = partes.slice(1, -1).join('_');
-
-    const pendiente = await fsLeer(env, 'pagos/' + token);
-    if (!pendiente || pendiente.uid !== uid || !PLAN_PRECIOS[pendiente.tier]) return json({ ok: true });
-    const monto = info.auto_recurring && Number(info.auto_recurring.transaction_amount);
-    if (monto !== PLAN_PRECIOS[pendiente.tier]) return json({ ok: true }); // el monto cobrado debe ser el del plan
-
-    const persona = await fsLeer(env, 'personas/' + uid);
-    if (!persona) return json({ ok: true });
-    await fsEscribir(env, 'pagos/' + token, { estado: info.status === 'authorized' ? 'activa' : info.status, mpStatus: info.status, actualizado: Date.now() }, true);
-
-    if (info.status === 'authorized') {
-      // un plan asignado a mano y más alto no se baja por un pago de un plan menor
-      const manualMayor = !persona.porPago && (RANGO[persona.perfil] || 0) > (RANGO[pendiente.tier] || 0);
-      if (!manualMayor) await fsEscribir(env, 'personas/' + uid, { perfil: pendiente.tier, porPago: true, mpId: String(info.id) }, true);
-    } else if ((info.status === 'cancelled' || info.status === 'paused') && persona.porPago && persona.mpId === String(info.id)) {
-      await fsEscribir(env, 'personas/' + uid, { perfil: 'free', porPago: false }, true);
-    }
+    await aplicarSuscripcion(env, await mp(env, 'GET', '/preapproval/' + encodeURIComponent(id))); // el estado real, no el que dice el aviso
   } catch (e) {
     // no relanzar: si respondemos distinto de 2xx, Mercado Pago reintenta la notificación sin parar
     console.error('mp-webhook', e);
@@ -220,7 +236,34 @@ async function webhook(request, env, url) {
   return json({ ok: true });
 }
 
+/* Conciliación diaria: si un aviso se perdió (caída del Worker, de Mercado Pago o de Firestore), esto lo repara.
+   Deja el resultado en sistema/estado, que la vigilancia de GitHub revisa. */
+async function conciliar(env) {
+  let revisadas = 0, corregidas = 0; const errores = [];
+  try {
+    for (const x of await fsConsultar(env, 'personas', 'porPago', true)) { // cuentas con plan pagado: ¿sigue vigente?
+      revisadas++;
+      try {
+        if (!x.datos.mpId) continue;
+        const info = await mp(env, 'GET', '/preapproval/' + encodeURIComponent(x.datos.mpId));
+        if (info.status !== 'authorized') { await fsEscribir(env, 'personas/' + x.id, { perfil: 'free', porPago: false }, true); corregidas++; }
+      } catch (e) { errores.push('cuenta ' + x.id.slice(0, 6) + ': ' + String(e.message || e).slice(0, 80)); }
+    }
+    for (const x of await fsConsultar(env, 'pagos', 'estado', 'pendiente')) { // pagos recientes que Mercado Pago ya aprobó
+      if (!x.datos.preapprovalId || Date.now() - Number(x.datos.creado || 0) > 3 * 864e5) continue;
+      revisadas++;
+      try { if ((await aplicarSuscripcion(env, await mp(env, 'GET', '/preapproval/' + encodeURIComponent(x.datos.preapprovalId)))) === 'activado') corregidas++; }
+      catch (e) { errores.push('pago ' + x.id.slice(0, 6) + ': ' + String(e.message || e).slice(0, 80)); }
+    }
+  } catch (e) { errores.push(String(e.message || e).slice(0, 120)); }
+  const resultado = { ts: Date.now(), ok: errores.length === 0, revisadas, corregidas, error: errores.slice(0, 3).join(' | ').slice(0, 300) };
+  try { await fsEscribir(env, 'sistema/estado', { conciliacion: resultado }); } catch (e) { console.error('conciliación: no se pudo anotar el resultado', e); }
+  return resultado;
+}
+
 export default {
+  // Cloudflare → Triggers → Cron Triggers: una vez al día (por ejemplo «17 7 * * *»)
+  async scheduled(event, env, ctx) { ctx.waitUntil(conciliar(env)); },
   async fetch(request, env) {
     const origen = request.headers.get('Origin');
     const resp = await enrutar(request, env);

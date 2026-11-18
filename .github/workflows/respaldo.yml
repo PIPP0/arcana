@@ -1,0 +1,52 @@
+name: Respaldo
+# Cada día copia cuentas, planes, pagos y configuración de Firestore a un archivo CIFRADO (se guarda 30 días como artefacto).
+# Necesita dos secretos del repositorio: FIREBASE_SA (clave de servicio) y RESPALDO_CLAVE (una frase larga que tú inventas).
+# Mientras no estén, el trabajo avisa y termina sin error.
+on:
+  schedule:
+    - cron: '23 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  respaldar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      FIREBASE_SA: ${{ secrets.FIREBASE_SA }}
+      RESPALDO_CLAVE: ${{ secrets.RESPALDO_CLAVE }}
+    steps:
+      - name: Comprobar secretos
+        id: sec
+        run: |
+          if [ -z "$FIREBASE_SA" ] || [ -z "$RESPALDO_CLAVE" ]; then
+            echo "Respaldo sin configurar: faltan los secretos FIREBASE_SA y/o RESPALDO_CLAVE (ver scripts/LEEME.md)."
+            echo "listo=no" >> "$GITHUB_OUTPUT"
+          else
+            echo "listo=si" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.sec.outputs.listo == 'si'
+      - uses: actions/setup-node@v4
+        if: steps.sec.outputs.listo == 'si'
+        with:
+          node-version: 20
+      - name: Copiar Firestore
+        if: steps.sec.outputs.listo == 'si'
+        run: node scripts/respaldo.mjs respaldo.json
+      - name: Cifrar
+        if: steps.sec.outputs.listo == 'si'
+        run: |
+          openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -in respaldo.json -out respaldo.json.enc -pass env:RESPALDO_CLAVE
+          shred -u respaldo.json 2>/dev/null || rm -f respaldo.json
+          ls -l respaldo.json.enc
+      - name: Guardar 30 días
+        if: steps.sec.outputs.listo == 'si'
+        uses: actions/upload-artifact@v4
+        with:
+          name: respaldo-arcana-${{ github.run_number }}
+          path: respaldo.json.enc
+          retention-days: 30
+          if-no-files-found: error

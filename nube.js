@@ -7,7 +7,7 @@
   const cfg = window.ARCANA_NUBE || null;
   const VERSION = '10.12.2';
   const BASE = `https://www.gstatic.com/firebasejs/${VERSION}/`;
-  const DEF = { cartaDelDia: true, desfile: true, planes: true, cuentas: true, medicion: true,
+  const DEF = { cobros: true, cartaDelDia: true, desfile: true, planes: true, cuentas: true, medicion: true,
     mazos: { rws: true, dodal: true, sola: true }, aviso: { activo: false, texto: '' } };
   const CACHE = 'arcana.func.v1', CACHE_P = 'arcana.perf.v1';
   /* Perfiles: lo que cada uno incluye. null en un tope = sin límite. El admin lo cambia en config/perfiles. */
@@ -198,6 +198,7 @@
       await c.au.sendPasswordResetEmail(c.auth, correo);
     },
     pagosActivos: () => !!window.ARCANA_PAGOS,
+    cobrosEnPausa: () => F.cobros === false,
     /* Pide al servidor de pagos el enlace de Mercado Pago para el plan elegido. Devuelve la dirección a la que ir a pagar. */
     async suscribir(tier) {
       const base = window.ARCANA_PAGOS; if (!base) throw new Error('pagos-no-disponibles');

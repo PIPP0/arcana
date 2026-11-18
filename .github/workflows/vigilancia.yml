@@ -1,0 +1,19 @@
+name: Vigilancia
+# Cada 15 minutos revisa que ARCANA esté en pie: sitio, imágenes, certificado, DNS, Firestore, pagos y conciliación.
+# Si algo falla, el trabajo termina en rojo y GitHub avisa por correo a quien administra el repositorio.
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  vigilar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Revisar ARCANA
+        run: bash scripts/vigilar.sh

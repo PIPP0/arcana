@@ -659,6 +659,7 @@
   /* ---------- pago con Mercado Pago ---------- */
   async function iniciarPago(tier, boton) {
     if (!window.Nube.pagosActivos()) { aviso('Los cobros se activan muy pronto. Tu cuenta ya queda lista para suscribirte.'); return; }
+    if (window.Nube.cobrosEnPausa()) { aviso('Los cobros están en pausa por mantenimiento. Tu plan actual no se ve afectado; intenta de nuevo más tarde.'); return; }
     const T = window.Nube.todosPerfiles(), P = T[tier] || {};
     const ok = await confirmarModal({ titulo: `Suscribirte a ${NOMBRE_PERFIL[tier]}`, texto: `Vas a pasar a Mercado Pago para pagar ${P.precio || ''} ${P.periodo || 'al mes'}. Se renueva cada mes y puedes cancelar cuando quieras desde Mi perfil.`, boton: 'Ir a pagar', tono: 'normal' });
     if (!ok) return;
@@ -1213,7 +1214,7 @@
     const caja = $('#planesG'); if (!caja) return;
     const T = window.Nube.todosPerfiles(), actual = window.Nube.usuario() ? window.Nube.perfil() : null;
     const inv = $('#planesInv'); if (inv) inv.hidden = !esInvitado();
-    const nota = $('#planesNota'); if (nota) nota.textContent = window.Nube.pagosActivos() ? 'Pagos con Mercado Pago, tarjeta o transferencia. Se renuevan cada mes y puedes cancelar cuando quieras desde Mi perfil. Precios en pesos chilenos.' : 'Los cobros se activan muy pronto: crea tu cuenta hoy y quedarás lista o listo para suscribirte cuando abran. Precios en pesos chilenos.';
+    const nota = $('#planesNota'); if (nota) nota.textContent = window.Nube.cobrosEnPausa() ? 'Los cobros están en pausa por mantenimiento. Si ya tienes un plan, sigue activo. Precios en pesos chilenos.' : window.Nube.pagosActivos() ? 'Pagos con Mercado Pago, tarjeta o transferencia. Se renuevan cada mes y puedes cancelar cuando quieras desde Mi perfil. Precios en pesos chilenos.' : 'Los cobros se activan muy pronto: crea tu cuenta hoy y quedarás lista o listo para suscribirte cuando abran. Precios en pesos chilenos.';
     caja.innerHTML = ['free', 'full', 'premium'].map((k) => {
       const P = T[k] || {}, X = PLAN_TEXTO[k];
       const li = (ok, t) => `<li${ok ? '' : ' class="no"'}>${t}</li>`;

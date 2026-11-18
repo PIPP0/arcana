@@ -87,6 +87,13 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // Estado del sistema (fecha de la última conciliación de pagos y si salió bien). No tiene datos de personas.
+    // Lo lee la vigilancia de GitHub; solo lo escribe el servidor de pagos.
+    match /sistema/{doc} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // Pagos con Mercado Pago: los escribe solo el servidor de pagos (Worker de Cloudflare, que no pasa por estas reglas).
     // El admin los puede leer; nadie puede escribirlos desde el sitio.
     match /pagos/{id} {
