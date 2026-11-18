@@ -749,13 +749,24 @@
       <div class="acciones fin-p"><button type="button" class="btn" id="btnSalir">Salir de mi cuenta</button><button type="button" class="btn chico" id="btnBorrarFicha">Borrar mi ficha</button></div>`;
   }
   const cuentaCaja = $('#cuentaCaja');
+  function cerrarMenuPerfil() { const m = $('#menuPerfil'), c = $('#btnPerfil'); if (m) m.hidden = true; if (c) c.setAttribute('aria-expanded', 'false'); }
   function pintarCuenta() {
     const u = window.Nube.usuario(), on = window.Nube.activa && window.Nube.funciones().cuentas !== false;
-    const chip = $('#btnPerfil');
+    const chip = $('#btnPerfil'), menuP = $('#menuPerfil');
     if (chip) {
       chip.hidden = !on; chip.classList.toggle('con-avatar', !!u);
       chip.innerHTML = u ? `<span class="chip-av">${avatarHtml(u)}</span>` : 'Entrar';
-      chip.setAttribute('aria-label', u ? 'Mi perfil' : 'Entrar o crear cuenta');
+      chip.setAttribute('aria-label', u ? 'Mi cuenta' : 'Entrar o crear cuenta');
+      if (u) chip.removeAttribute('data-ir'); else { chip.setAttribute('data-ir', 'perfil'); cerrarMenuPerfil(); }
+    }
+    if (menuP && u) {
+      const p = window.Nube.perfil(), av = avatarDe(u);
+      menuP.innerHTML = `<div class="mp-cab"><span class="mp-av">${avatarHtml(u)}</span><div><b>${esc(nombreDe(u))}</b><small>${esc(u.email)}</small><span class="sello-p">${NOMBRE_PERFIL[p]}</span></div></div>
+        <div class="mp-avs" role="radiogroup" aria-label="Tu avatar">${AVATARES.map(([id, n]) => `<button type="button" class="mp-op${av === id ? ' sel' : ''}" role="radio" aria-checked="${av === id}" aria-label="${n}" title="${n}" data-mini="${id}">${avatarSvg(id)}</button>`).join('')}</div>
+        <button type="button" role="menuitem" data-ir="perfil">Abrir perfil</button>
+        <button type="button" role="menuitem" data-ir="espacio">Mi espacio</button>
+        ${p !== 'premium' ? '<button type="button" role="menuitem" data-planes="1">Descubre Premium</button>' : ''}
+        <button type="button" role="menuitem" class="mp-salir" id="mpSalir">Salir de mi cuenta</button>`;
     }
     const caja = $('#cuentaEstado');
     if (caja) caja.innerHTML = u
@@ -767,6 +778,26 @@
     cont.innerHTML = u ? perfilHtml(u) : loginHtml();
   }
   const msgCuenta = (t, ok) => { const m = $('#cMsg'); if (m) { m.textContent = t; m.classList.toggle('ok', !!ok); } };
+  const chipPerfil = $('#btnPerfil'), menuPerfil = $('#menuPerfil');
+  if (chipPerfil && menuPerfil) {
+    chipPerfil.addEventListener('click', () => {
+      if (!window.Nube.usuario()) return; // sin sesión, el botón lleva a «Entrar»
+      const abrir = menuPerfil.hidden; menuPerfil.hidden = !abrir; chipPerfil.setAttribute('aria-expanded', String(abrir));
+      if (abrir) { const b = menuPerfil.querySelector('[data-ir="perfil"]'); if (b) b.focus(); }
+    });
+    menuPerfil.addEventListener('click', async (e) => {
+      const mini = e.target.closest('[data-mini]');
+      if (mini) { ponerAvatar(mini.dataset.mini); sfx.tick(); return; }
+      if (e.target.closest('#mpSalir')) {
+        cerrarMenuPerfil();
+        try { await window.Nube.salir(); ir('inicio'); aviso('Saliste de tu cuenta.'); } catch (err) { aviso('No se pudo salir. Intenta de nuevo.'); }
+        return;
+      }
+      if (e.target.closest('[data-ir], [data-planes]')) cerrarMenuPerfil();
+    });
+    document.addEventListener('click', (e) => { if (!menuPerfil.hidden && !e.composedPath().includes(chipPerfil.parentElement)) cerrarMenuPerfil(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !menuPerfil.hidden) { cerrarMenuPerfil(); chipPerfil.focus(); } });
+  }
   const vPerfil = $('#v-perfil');
   if (vPerfil) {
     vPerfil.addEventListener('click', async (e) => {

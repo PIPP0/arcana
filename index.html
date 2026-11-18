@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,500;1,6..96,400&family=Jost:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=24">
+<link rel="stylesheet" href="styles.css?v=25">
 </head>
 <body>
 <a class="salto" href="#contenido">Saltar al contenido</a>
@@ -25,7 +25,10 @@
       <button type="button" class="enlace" id="btnEstilo" aria-haspopup="true" aria-expanded="false" aria-controls="menuSonido" aria-label="Estilo de sonido" hidden>▾</button>
       <div class="menu-sonido" id="menuSonido" role="menu" aria-label="Estilo de sonido" hidden></div>
     </span>
-    <button type="button" class="enlace btn-perfil" id="btnPerfil" data-ir="perfil" hidden>Entrar</button>
+    <span class="perfil-caja">
+      <button type="button" class="enlace btn-perfil" id="btnPerfil" data-ir="perfil" aria-haspopup="true" aria-expanded="false" aria-controls="menuPerfil" hidden>Entrar</button>
+      <div class="menu-perfil" id="menuPerfil" role="menu" aria-label="Mi cuenta" hidden></div>
+    </span>
   </nav>
 </header>
 
@@ -238,6 +241,6 @@
 <script src="cards.js?v=15"></script>
 <script src="menores.js?v=15"></script>
 <script src="sonido.js?v=1"></script>
-<script src="app.js?v=29"></script>
+<script src="app.js?v=30"></script>
 </body>
 </html>
