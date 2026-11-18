@@ -612,7 +612,11 @@ body.interior main::after { content: ''; position: fixed; left: -300px; top: -26
 /* suscripción: lo que el perfil no incluye se muestra como invitación */
 .sello-p { display: inline-block; font-size: .72rem; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; color: #14122a; background: var(--oro); padding: 3px 12px; border-radius: 999px; }
 .mazo.bloq, .tirada.bloq, .tema-p.bloq { position: relative; border-color: color-mix(in srgb, var(--oro) 55%, transparent); }
-.mazo.bloq .abanico, .tirada.bloq .tendido { filter: saturate(.55) brightness(.8); }
+/* capa suave que oscurece un poco lo bloqueado */
+.mazo.bloq::after, .tirada.bloq::after { content: ''; position: absolute; inset: 0; border-radius: inherit; background: rgba(5, 8, 22, .26); pointer-events: none; z-index: 1; }
+.mazo.bloq > .sello-p, .tirada.bloq > .sello-p { z-index: 2; }
+.tema-p.bloq img { filter: brightness(.8); }
+.vit .suscr { position: relative; }
 .mazo.bloq > .sello-p, .tirada.bloq > .sello-p { position: absolute; top: 14px; right: 14px; z-index: 2; }
 .tema-p.bloq > span { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
 .tema-p small { font-family: var(--sans, inherit); font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--oro-claro); line-height: 1.35; }

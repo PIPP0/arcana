@@ -234,7 +234,7 @@
   /* Qué plan abre algo que el perfil actual no incluye (el más barato que lo tenga). */
   const NOMBRES_PLAN = { free: 'Free', full: 'Full', premium: 'Premium' };
   function planQueAbre(prueba) { const T = window.Nube.todosPerfiles(); return ['full', 'premium'].find((k) => prueba(T[k] || {})) || 'premium'; }
-  const bloqueo = (prueba) => `Con suscripción · ${NOMBRES_PLAN[planQueAbre(prueba)]}`;
+  const bloqueo = () => 'Con suscripción';
   function irAPlanes(msg) {
     ir('inicio', false);
     setTimeout(() => { const p = $('#planes'); if (p) p.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 60);
@@ -365,7 +365,7 @@
     if (!temasPermitidos().some((t) => t.id === estado.tema)) estado.tema = 'general';
     $('#listaTemas').innerHTML = TEMAS.map((t) => {
       const bl = t.id === 'libre' && permisos().temaLibre === false;
-      return `<button type="button" class="tema-p${bl ? ' bloq' : ''}" role="radio" aria-checked="${t.id === estado.tema}" data-tema="${t.id}"${bl ? ' data-bloq="1"' : ''} tabindex="${t.id === estado.tema ? 0 : -1}"><img src="${src(estado.mazo, TEMA_IMG[t.id])}" alt="" decoding="async"><span>${t.nombre}${bl ? `<small>${bloqueo((P) => P.temaLibre !== false)} · Descúbrelo suscribiéndote</small>` : ''}</span></button>`;
+      return `<button type="button" class="tema-p${bl ? ' bloq' : ''}" role="radio" aria-checked="${t.id === estado.tema}" data-tema="${t.id}"${bl ? ' data-bloq="1"' : ''} tabindex="${t.id === estado.tema ? 0 : -1}"><img src="${src(estado.mazo, TEMA_IMG[t.id])}" alt="" decoding="async"><span>${t.nombre}${bl ? `<small>Descúbrelo suscribiéndote</small>` : ''}</span></button>`;
     }).join('');
   }
   pintarTemas();
@@ -715,8 +715,8 @@
   /* Tarjetas de planes: salen de los perfiles que se editan en el admin. */
   const PLAN_TEXTO = {
     free: { lema: 'Para empezar hoy, sin tarjeta ni compromiso.', boton: 'Comenzar gratis' },
-    full: { lema: 'Para leer con regularidad y ver cada lectura completa.', boton: 'Suscribirme a Full', cinta: 'La más elegida' },
-    premium: { lema: 'Para vivir el tarot sin límites.', boton: 'Suscribirme a Premium', cinta: 'Sin límites' }
+    full: { lema: 'Para leer con regularidad y ver cada lectura completa.', boton: 'Suscribirme a Full' },
+    premium: { lema: 'Todo abierto y sin límites: la experiencia completa del tarot.', boton: 'Quiero Premium', cinta: 'La mejor opción' }
   };
   function pintarPlanes() {
     const caja = $('#planesG'); if (!caja) return;
@@ -732,8 +732,8 @@
         .concat([P.diario === false ? li(false, 'Guardar lecturas y notas') : li(true, typeof P.guardadas === 'number' ? `Guarda hasta ${P.guardadas} lecturas` : 'Diario sin límite')]);
       const boton = actual === k ? '<button type="button" class="btn" disabled>Tu plan actual</button>'
         : k === 'free' ? `<button type="button" class="btn" data-ir="mazo">${X.boton}</button>`
-          : `<button type="button" class="btn primario" data-suscribir="${k}">${X.boton}</button>`;
-      return `<li class="plan${k === 'full' ? ' dest' : ''} revela visto">${X.cinta ? `<p class="cinta">${X.cinta}</p>` : ''}
+          : `<button type="button" class="btn${k === 'premium' ? ' primario' : ''}" data-suscribir="${k}">${X.boton}</button>`;
+      return `<li class="plan${k === 'premium' ? ' dest' : ''} revela visto">${X.cinta ? `<p class="cinta">${X.cinta}</p>` : ''}
         <h3>${NOMBRES_PLAN[k]}</h3><p class="lema">${X.lema}</p>
         <p class="monto">${esc(P.precio || '')}</p><p class="periodo">${esc(P.periodo || '')}</p>
         <ul>${items.join('')}</ul>${boton}</li>`;
