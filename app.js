@@ -209,7 +209,7 @@
 
     return {
       /* al activar el sonido: tres notas ascendentes y empieza el fondo */
-      encender: seguro((t) => { [NOTA.la4, NOTA.mi5, NOTA.la5].forEach((f, i) => voz(f, t + i * 0.16, 2.4, 0.07, CAMPANA)); ambiente(true); }),
+      encender: seguro((t) => { [NOTA.la4, NOTA.mi5, NOTA.la5].forEach((f, i) => voz(f, t + i * 0.16, 2.4, 0.07, CAMPANA)); }),
       apagar() { ambiente(false); },
       /* un toque suave: temas, opciones */
       tick: seguro((t) => { voz(NOTA.mi6, t, 0.5, 0.045, CRISTAL, 0.004, 0.5); roce(t, 0.05, 3200, 1800, 0.02); }),
