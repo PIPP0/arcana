@@ -17,10 +17,10 @@
   const DEF = { cartaDelDia: true, desfile: true, planes: true, cuentas: true, medicion: true, mazos: { rws: true, dodal: true, sola: true }, aviso: { activo: false, texto: '' } };
   const T3 = { una: true, tiempo: true, perspectivas: true };
   const PERF_DEF = {
-    invitado: { precio: '', periodo: '', sonido: true, estilos: { 1: true, 2: false, 3: false, 4: false, 5: false }, calendario: false, tiradas: { una: true, tiempo: false, perspectivas: false }, mazos: { rws: true, dodal: false, sola: false }, temaLibre: false, diario: false, lecturasDia: 3, guardadas: 0 },
-    free: { precio: 'Gratis', periodo: 'Disponible hoy', sonido: true, calendario: true, estilos: { 1: true, 2: false, 3: false, 4: false, 5: false }, tiradas: { una: true, tiempo: true, perspectivas: false }, mazos: { rws: true, dodal: true, sola: false }, temaLibre: false, diario: true, lecturasDia: 5, guardadas: 10 },
-    full: { precio: '$3.990', periodo: 'al mes', sonido: true, calendario: true, estilos: { 1: true, 2: true, 3: true, 4: false, 5: false }, tiradas: Object.assign({}, T3), mazos: { rws: true, dodal: true, sola: true }, temaLibre: true, diario: true, lecturasDia: 15, guardadas: 100 },
-    premium: { precio: '$6.990', periodo: 'al mes', sonido: true, calendario: true, estilos: { 1: true, 2: true, 3: true, 4: true, 5: true }, tiradas: Object.assign({}, T3), mazos: { rws: true, dodal: true, sola: true }, temaLibre: true, diario: true, lecturasDia: null, guardadas: null }
+    invitado: { precio: '', periodo: '', sonido: true, estilos: { 1: true, 2: false, 3: false, 4: false, 5: false }, calendario: false, tiradas: { una: true, tiempo: false, perspectivas: false }, mazos: { rws: true, dodal: false, sola: false }, temaLibre: false, diario: false, lecturasDia: 3, guardadas: 0, recuperarDias: 0 },
+    free: { precio: 'Gratis', periodo: 'Disponible hoy', sonido: true, calendario: true, estilos: { 1: true, 2: false, 3: false, 4: false, 5: false }, tiradas: { una: true, tiempo: true, perspectivas: false }, mazos: { rws: true, dodal: true, sola: false }, temaLibre: false, diario: true, lecturasDia: 5, guardadas: 10, recuperarDias: 0 },
+    full: { precio: '$3.990', periodo: 'al mes', sonido: true, calendario: true, estilos: { 1: true, 2: true, 3: true, 4: false, 5: false }, tiradas: Object.assign({}, T3), mazos: { rws: true, dodal: true, sola: true }, temaLibre: true, diario: true, lecturasDia: 15, guardadas: 100, recuperarDias: 1 },
+    premium: { precio: '$6.990', periodo: 'al mes', sonido: true, calendario: true, estilos: { 1: true, 2: true, 3: true, 4: true, 5: true }, tiradas: Object.assign({}, T3), mazos: { rws: true, dodal: true, sola: true }, temaLibre: true, diario: true, lecturasDia: null, guardadas: null, recuperarDias: null }
   };
   const ESTILOS_SONIDO = [[1, 'Cristal y campanas'], [2, 'Cuenco tibetano y aliento'], [3, 'Arpa celestial'], [4, 'Cajita de música'], [5, 'Ritual y misterio']];
   const PERFILES = [['free', 'Free'], ['full', 'Full'], ['premium', 'Premium']];
@@ -349,6 +349,7 @@
       <tr class="sub"><td colspan="5"><b>Topes</b> (vacío = sin límite)</td></tr>
       ${filaN('Lecturas por día', 'Se cuentan en el dispositivo de la persona, por día de Chile.', 'lecturasDia')}
       ${filaN('Lecturas guardadas', 'Cuántas puede conservar en Mi espacio.', 'guardadas')}
+      ${filaN('Días perdidos que puede recuperar', 'De la semana en curso, hacia atrás: días en que no abrió su carta. 0 = no puede; vacío = todos los que le falten.', 'recuperarDias')}
       </tbody></table></div>
       <p class="nota" style="margin-top:12px">${E.perfiles && E.perfiles.actualizado ? `Última vez guardado: ${hora(E.perfiles.actualizado)}${E.perfiles.por ? ' por ' + esc(E.perfiles.por) : ''}.` : 'Todavía no se ha guardado: el sitio usa los valores de partida que ves aquí.'}</p>
       <p class="nota">Los topes se cuentan en el navegador, así que frenan el uso normal pero no a quien borre sus datos del navegador a propósito. Todavía no hay pagos: el perfil de cada cuenta se asigna a mano en <b>Personas</b>.</p></div>`;

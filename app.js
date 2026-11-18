@@ -720,6 +720,47 @@
   const sumarDias = (f, n) => { const [y, m, d] = f.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10); };
   const cal = { y: null, m: 0, sel: null };
   const fmtDiaLargo = new Intl.DateTimeFormat('es-CL', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  /* ---------- recuperar días perdidos de la semana ----------
+     Solo hacia atrás (nunca días que aún no llegan). La carta de cada día es fija: sale de la cuenta y la fecha. */
+  const RECUP_K = 'arcana.recup.v1';
+  function lunesDe(f) { const [y, m, d] = f.split('-').map(Number); return sumarDias(f, -((new Date(Date.UTC(y, m - 1, d)).getUTCDay() + 6) % 7)); }
+  function leerRecup() {
+    const lun = lunesDe(diaHoy());
+    try { const r = JSON.parse(localStorage.getItem(RECUP_K)); if (r && r.sem === lun && r.dias) return r; } catch (e) { /* sin datos */ }
+    return { sem: lun, dias: {} };
+  }
+  const limiteRecup = () => { const v = permisos().recuperarDias; return v === null ? Infinity : (typeof v === 'number' ? v : 0); };
+  const restantesRecup = () => Math.max(0, limiteRecup() - Object.keys(leerRecup().dias).length);
+  function diasPerdidos() {
+    const hoy = diaHoy(), hist = leerHist(), o = [];
+    for (let f = lunesDe(hoy); f < hoy; f = sumarDias(f, 1)) if (!CARTAS[hist[f]]) o.push(f);
+    return o;
+  }
+  async function cartaDeDia(uid, f) {
+    const h = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode('arcana|' + uid + '|' + f)));
+    return (((h[0] << 24) | (h[1] << 16) | (h[2] << 8) | h[3]) >>> 0) % TOTAL;
+  }
+  const textoDia = (f) => { const [y, m, d] = f.split('-').map(Number); return fmtDiaLargo.format(new Date(Date.UTC(y, m - 1, d))); };
+  async function recuperar(fechas) {
+    const u = window.Nube.usuario(); if (!u) { irEntrar('Entra a tu cuenta para recuperar tus días.'); return; }
+    const r = leerRecup();
+    for (const f of fechas) { const id = await cartaDeDia(u.uid, f); anotarDia(f, id); r.dias[f] = id; }
+    try { localStorage.setItem(RECUP_K, JSON.stringify(r)); } catch (e) { /* sigue igual */ }
+    cal.sel = fechas[fechas.length - 1]; sfx.revelar(1); sfx.entrega(true); pintarCalendario();
+    aviso(fechas.length === 1 ? 'Carta recuperada.' : `Listo: recuperaste ${fechas.length} días.`);
+  }
+  async function accionRecuperar(f) {
+    const lim = limiteRecup();
+    if (lim === 0) { sfx.negado(); irDesbloqueo((P) => P.recuperarDias !== 0, 'Recuperar días perdidos'); return; }
+    if (restantesRecup() === 0) { sfx.negado(); irAPlanes('Ya recuperaste tu día de esta semana. Con Premium recuperas todos los que te falten.'); return; }
+    const ok = await confirmarModal({ titulo: 'Recuperar una carta', texto: `Se da vuelta la carta que te tocaba el ${textoDia(f)}. ${lim === Infinity ? 'Con tu plan puedes recuperar todos los días que te falten esta semana.' : `Con tu plan recuperas ${lim} ${lim === 1 ? 'día' : 'días'} por semana: este será ${lim === 1 ? 'tu día' : 'uno de tus días'} de esta semana.`}`, boton: 'Dar vuelta', tono: 'normal' });
+    if (ok) recuperar([f]);
+  }
+  async function accionRecuperarTodos() {
+    const falt = diasPerdidos().slice(0, restantesRecup()); if (!falt.length) return;
+    const ok = await confirmarModal({ titulo: `Recuperar ${falt.length} ${falt.length === 1 ? 'carta' : 'cartas'}`, texto: 'Se dan vuelta las cartas que te tocaban en los días de esta semana que no abriste. Solo días que ya pasaron.', boton: 'Dar vuelta todas', tono: 'normal' });
+    if (ok) recuperar(falt);
+  }
   function pintarCalendario() {
     const grid = $('#calGrid'); if (!grid) return;
     const calOk = permisos().calendario !== false, calSec = $('#calendario');
@@ -746,6 +787,10 @@
     for (let d = 1; d <= dias; d++) {
       const f = `${cal.y}-${String(cal.m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`, id = hist[f], esHoy = f === hoy;
       if (id !== undefined && CARTAS[id]) h += `<button type="button" class="cal-d con${esHoy ? ' es-hoy' : ''}${cal.sel === f ? ' sel' : ''}" data-dia="${f}" aria-pressed="${cal.sel === f}" aria-label="${d} de ${MESES[cal.m]}: ${esc(CARTAS[id].nombre)}"><img src="${src('rws', id)}" alt="" loading="lazy" decoding="async"><span>${d}</span></button>`;
+      else if (f >= lunesDe(hoy) && f < hoy) {
+        const lim = limiteRecup(), est = lim === 0 ? 'bloq' : (restantesRecup() === 0 ? 'agotado' : 'ok');
+        h += `<button type="button" class="cal-d rec ${est}" data-rec="${f}" title="${est === 'ok' ? 'Recuperar esta carta' : est === 'bloq' ? 'Con suscripción' : 'Ya recuperaste tu día de esta semana'}" aria-label="${d} de ${MESES[cal.m]}: carta sin abrir. ${est === 'ok' ? 'Recuperarla' : est === 'bloq' ? 'Con suscripción' : 'Sin días de recuperación esta semana'}"><span>${d}</span><i aria-hidden="true">↺</i></button>`;
+      }
       else h += `<span class="cal-d${esHoy ? ' es-hoy' : ''}${f > hoy ? ' fut' : ''}"><span>${d}</span></span>`;
     }
     grid.innerHTML = h;
@@ -756,12 +801,20 @@
     $('#calStats').innerHTML = dados.length
       ? `<b>${delMes}</b> ${delMes === 1 ? 'carta' : 'cartas'} en ${MESES[cal.m]} · <b>${dados.length}</b> en total · racha de <b>${racha}</b> ${racha === 1 ? 'día' : 'días'}`
       : 'Todavía no has dado vuelta ninguna carta del día.';
+    // días perdidos de esta semana: recuperar o invitar a hacerlo
+    const per = diasPerdidos().length, lim = limiteRecup(), rest = restantesRecup(), info = $('#calRec');
+    if (info) {
+      if (!per) info.innerHTML = '';
+      else if (lim === 0) info.innerHTML = `Se te pasaron <b>${per}</b> ${per === 1 ? 'día' : 'días'} de esta semana. Con una suscripción puedes recuperarlos. <button type="button" class="enlace-p" data-planes="1">Ver planes →</button>`;
+      else if (rest === 0) info.innerHTML = `Ya recuperaste tu día de esta semana. Con Premium recuperas todos los que te falten. <button type="button" class="enlace-p" data-planes="1">Descubre Premium →</button>`;
+      else info.innerHTML = `Te ${per === 1 ? 'falta' : 'faltan'} <b>${per}</b> ${per === 1 ? 'día' : 'días'} de esta semana. ${lim === Infinity ? '' : `Puedes recuperar <b>${rest}</b> ${rest === 1 ? 'día' : 'días'}. `}Toca uno marcado con ↺${lim === Infinity && per > 1 ? ` o <button type="button" class="enlace-p" id="calRecTodos">dar vuelta los ${per}</button>` : ''}.`;
+    }
     // detalle del día elegido
     const det = $('#calDet'), id = cal.sel ? hist[cal.sel] : undefined;
     if (id !== undefined && CARTAS[id]) {
       const k = CARTAS[id], [yy, mm, dd] = cal.sel.split('-').map(Number);
       det.innerHTML = `<div class="cal-carta"><button type="button" class="cal-mini" data-ver-cal="${id}" aria-label="Ver ${esc(k.nombre)} en grande">${carta(cara(id, 'rws', false), 'rws')}</button>
-        <div><p class="pos">${fmtDiaLargo.format(new Date(Date.UTC(yy, mm - 1, dd)))}</p><h4>${esc(k.nombre)}</h4><p class="claves">${esc(k.claves)}</p><p>${esc(k.luz)}</p><p class="cal-q"><b>Una pregunta para ti</b>${esc(k.pregunta)}</p></div></div>`;
+        <div><p class="pos">${fmtDiaLargo.format(new Date(Date.UTC(yy, mm - 1, dd)))}</p>${leerRecup().dias[cal.sel] !== undefined ? '<span class="sello-p">Recuperada</span>' : ''}<h4>${esc(k.nombre)}</h4><p class="claves">${esc(k.claves)}</p><p>${esc(k.luz)}</p><p class="cal-q"><b>Una pregunta para ti</b>${esc(k.pregunta)}</p></div></div>`;
     } else {
       det.innerHTML = dados.length ? '<p class="cal-vacio">Toca un día con carta para recordar qué te acompañó.</p>'
         : '<div class="cal-vacio"><p>Cada vez que des vuelta tu carta del día, quedará anotada aquí, con su fecha.</p><div class="acciones" style="justify-content:flex-start"><button type="button" class="btn primario chico" id="calIr">Dar vuelta mi carta de hoy</button></div></div>';
@@ -773,6 +826,8 @@
     if (d) { cal.sel = d.dataset.dia; pintarCalendario(); return; }
     if (e.target.closest('#calAnt')) { cal.m--; if (cal.m < 0) { cal.m = 11; cal.y--; } pintarCalendario(); return; }
     if (e.target.closest('#calSig')) { cal.m++; if (cal.m > 11) { cal.m = 0; cal.y++; } pintarCalendario(); return; }
+    const rc = e.target.closest('[data-rec]'); if (rc) { accionRecuperar(rc.dataset.rec); return; }
+    if (e.target.closest('#calRecTodos')) { accionRecuperarTodos(); return; }
     const v = e.target.closest('[data-ver-cal]'); if (v) { ampliar(Number(v.dataset.verCal), 'rws'); return; }
     if (e.target.closest('#calIr')) { ir('inicio'); setTimeout(() => { const h = $('#hoy'); if (h) h.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 80); }
   });
@@ -1165,6 +1220,8 @@
       const items = [li(true, 'Carta del día')]
         .concat(TIRADAS.map((t) => li((P.tiradas || {})[t.id] !== false, t.nombre)))
         .concat(MAZOS.filter((m) => !m.pendiente).map((m) => li((P.mazos || {})[m.id] !== false, `Mazo ${m.nombre}`)))
+        .concat([li(P.calendario !== false, 'Calendario de tu carta del día')])
+        .concat([(() => { const rd = P.recuperarDias === null ? null : (typeof P.recuperarDias === 'number' ? P.recuperarDias : 0); return li(P.calendario !== false && rd !== 0, rd === null ? 'Recupera todos tus días perdidos de la semana' : rd > 0 ? `Recupera ${rd} ${rd === 1 ? 'día perdido' : 'días perdidos'} por semana` : 'Recuperar días perdidos'); })()])
         .concat([li(P.temaLibre !== false, 'Pregunta libre')])
         .concat([P.sonido === false ? li(false, 'Sonido místico') : li((Object.keys(P.estilos || {}).filter((n) => P.estilos[n] !== false).length || 0) > 0, `Sonido místico: ${Object.keys(P.estilos || {}).filter((n) => P.estilos[n] !== false).length} de 5 estilos`)])
         .concat([li(true, typeof P.lecturasDia === 'number' ? `${P.lecturasDia} lecturas al día` : 'Lecturas sin límite')])

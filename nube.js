@@ -13,10 +13,10 @@
   /* Perfiles: lo que cada uno incluye. null en un tope = sin límite. El admin lo cambia en config/perfiles. */
   const T3 = { una: true, tiempo: true, perspectivas: true };
   const PERF_DEF = {
-    invitado: { precio: '', periodo: '', sonido: true, estilos: { 1: true, 2: false, 3: false, 4: false, 5: false }, calendario: false, tiradas: { una: true, tiempo: false, perspectivas: false }, mazos: { rws: true, dodal: false, sola: false }, temaLibre: false, diario: false, lecturasDia: 3, guardadas: 0 },
-    free: { precio: 'Gratis', periodo: 'Disponible hoy', sonido: true, calendario: true, estilos: { 1: true, 2: false, 3: false, 4: false, 5: false }, tiradas: { una: true, tiempo: true, perspectivas: false }, mazos: { rws: true, dodal: true, sola: false }, temaLibre: false, diario: true, lecturasDia: 5, guardadas: 10 },
-    full: { precio: '$3.990', periodo: 'al mes', sonido: true, calendario: true, estilos: { 1: true, 2: true, 3: true, 4: false, 5: false }, tiradas: Object.assign({}, T3), mazos: { rws: true, dodal: true, sola: true }, temaLibre: true, diario: true, lecturasDia: 15, guardadas: 100 },
-    premium: { precio: '$6.990', periodo: 'al mes', sonido: true, calendario: true, estilos: { 1: true, 2: true, 3: true, 4: true, 5: true }, tiradas: Object.assign({}, T3), mazos: { rws: true, dodal: true, sola: true }, temaLibre: true, diario: true, lecturasDia: null, guardadas: null }
+    invitado: { precio: '', periodo: '', sonido: true, estilos: { 1: true, 2: false, 3: false, 4: false, 5: false }, calendario: false, tiradas: { una: true, tiempo: false, perspectivas: false }, mazos: { rws: true, dodal: false, sola: false }, temaLibre: false, diario: false, lecturasDia: 3, guardadas: 0, recuperarDias: 0 },
+    free: { precio: 'Gratis', periodo: 'Disponible hoy', sonido: true, calendario: true, estilos: { 1: true, 2: false, 3: false, 4: false, 5: false }, tiradas: { una: true, tiempo: true, perspectivas: false }, mazos: { rws: true, dodal: true, sola: false }, temaLibre: false, diario: true, lecturasDia: 5, guardadas: 10, recuperarDias: 0 },
+    full: { precio: '$3.990', periodo: 'al mes', sonido: true, calendario: true, estilos: { 1: true, 2: true, 3: true, 4: false, 5: false }, tiradas: Object.assign({}, T3), mazos: { rws: true, dodal: true, sola: true }, temaLibre: true, diario: true, lecturasDia: 15, guardadas: 100, recuperarDias: 1 },
+    premium: { precio: '$6.990', periodo: 'al mes', sonido: true, calendario: true, estilos: { 1: true, 2: true, 3: true, 4: true, 5: true }, tiradas: Object.assign({}, T3), mazos: { rws: true, dodal: true, sola: true }, temaLibre: true, diario: true, lecturasDia: null, guardadas: null, recuperarDias: null }
   };
   const PERFILES = ['free', 'full', 'premium'];
 
