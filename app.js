@@ -363,10 +363,10 @@
       btn.innerHTML = `<span class="dentro"><span class="lado carta c-rws">${reverso('rws')}</span><span class="lado frente carta c-rws">${cara(g.carta, 'rws', false)}</span></span>`;
     }
     caras();
-    const interruptor = (on) => `<label class="sw"><input type="checkbox" id="hoySw" role="switch" ${on ? 'checked' : ''}><span class="sw-pista" aria-hidden="true"></span><span class="sw-txt">Mostrar mi carta</span></label>`;
+    const interruptor = (on) => `<label class="sw"><input type="checkbox" id="hoySw" role="switch" ${on ? 'checked' : ''}><span class="sw-pista" aria-hidden="true"></span><span class="sw-txt">Ocultar carta</span></label>`;
     function pintarEspera() {
       btn.classList.remove('vista-carta'); btn.setAttribute('aria-label', 'Dar vuelta mi carta de hoy');
-      txt.innerHTML = `<p class="hoy-espera">Está boca abajo, esperándote.</p>${interruptor(false)}`;
+      txt.innerHTML = '<p class="hoy-espera">Está boca abajo, esperándote.</p>';
     }
     function mostrar() {
       anotarDia(hoy, g.carta); // toda carta visible queda anotada en el calendario
@@ -401,7 +401,7 @@
 
     if (g.vista && window.Nube.usuario()) mostrar(); else pintarEspera();
     btn.addEventListener('click', () => { if (visible()) ampliar(g.carta, 'rws'); else revelar(); });
-    txt.addEventListener('change', (e) => { if (e.target.id !== 'hoySw') return; if (e.target.checked) revelar(); else { sfx.tick(); ocultar(); } });
+    txt.addEventListener('change', (e) => { if (e.target.id !== 'hoySw' || e.target.checked) return; sfx.tick(); ocultar(); }); // el interruptor solo oculta; para volver a verla se toca la carta
 
     let reclamada = false;
     window.Nube.alCambiarUsuario((u) => {
