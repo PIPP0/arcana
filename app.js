@@ -325,6 +325,7 @@
     const k = CARTAS[g.carta], btn = $('#hoyGiro');
     btn.innerHTML = `<span class="dentro"><span class="lado carta c-rws">${reverso('rws')}</span><span class="lado frente carta c-rws">${cara(g.carta, 'rws', false)}</span></span>`;
     function mostrar() {
+      anotarDia(hoy, g.carta); // toda carta visible queda anotada en el calendario, también al restaurarla con la sesión
       btn.classList.add('vista-carta');
       btn.setAttribute('aria-label', `Tu carta de hoy: ${k.nombre}. Ampliar`);
       const lente = [
