@@ -870,6 +870,43 @@
     }
   });
 
+  /* ---------- llevar mis datos (exportar / importar) ---------- */
+  const CLAVES_DATOS = [CLAVE, 'arcana.hoy.hist.v1', 'arcana.hoy.v1', 'arcana.sonido.estilo'];
+  const esClaveDato = (k) => CLAVES_DATOS.includes(k) || k.startsWith('arcana.avatar.');
+  function exportarDatos() {
+    const datos = {};
+    try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (esClaveDato(k)) datos[k] = localStorage.getItem(k); } } catch (e) { /* sin almacenamiento */ }
+    const blob = new Blob([JSON.stringify({ app: 'arcana', version: 1, exportado: new Date().toISOString(), datos }, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'arcana-mis-datos.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    aviso('Archivo descargado. Cárgalo en el otro dispositivo o dirección con «Cargar mis datos».');
+  }
+  function importarDatos(texto) {
+    let o; try { o = JSON.parse(texto); } catch (e) { return aviso('Ese archivo no se pudo leer.'); }
+    if (!o || o.app !== 'arcana' || !o.datos || typeof o.datos !== 'object') return aviso('Ese archivo no es de ARCANA.');
+    const d = o.datos, lee = (k) => { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } };
+    const pon = (k, v) => { try { localStorage.setItem(k, typeof v === 'string' ? v : JSON.stringify(v)); } catch (e) { /* sigue igual */ } };
+    let nuevas = 0;
+    // lecturas guardadas: se suman por identificador, sin pisar las que ya hay
+    try {
+      const entrantes = JSON.parse(d[CLAVE] || '[]'), actuales = leer(), ids = new Set(actuales.map((x) => x.id));
+      entrantes.forEach((x) => { if (x && x.id && !ids.has(x.id)) { actuales.push(x); nuevas++; } });
+      actuales.sort((a, b) => String(b.fecha).localeCompare(String(a.fecha))); escribir(actuales);
+    } catch (e) { /* esa parte se omite */ }
+    // calendario: se suman los días que faltan
+    try { const h = Object.assign({}, JSON.parse(d['arcana.hoy.hist.v1'] || '{}'), lee('arcana.hoy.hist.v1') || {}); pon('arcana.hoy.hist.v1', h); } catch (e) { /* se omite */ }
+    // carta de hoy: solo si es de hoy y aquí aún no hay una distinta; preferencias y avatar: solo si no hay
+    try { const g = JSON.parse(d['arcana.hoy.v1'] || 'null'); if (g && g.dia === diaHoy() && !lee('arcana.hoy.v1')) pon('arcana.hoy.v1', g); } catch (e) { /* se omite */ }
+    Object.keys(d).forEach((k) => { if ((k === 'arcana.sonido.estilo' || k.startsWith('arcana.avatar.')) && localStorage.getItem(k) === null) pon(k, d[k]); });
+    pintarHistorial(); pintarCalendario();
+    aviso(nuevas ? `Listo: se sumaron ${nuevas} ${nuevas === 1 ? 'lectura' : 'lecturas'} y tu calendario.` : 'Listo: tu calendario y tus preferencias se cargaron. No había lecturas nuevas.');
+  }
+  (function () {
+    const exp = $('#btnExportar'), imp = $('#btnImportar'), arch = $('#archivoDatos'); if (!exp) return;
+    exp.addEventListener('click', exportarDatos);
+    imp.addEventListener('click', () => arch.click());
+    arch.addEventListener('change', () => { const f = arch.files && arch.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => importarDatos(String(r.result || '')); r.readAsText(f); arch.value = ''; });
+  })();
+
   /* carrusel de lecturas: la posición se calcula por el ancho de cada tarjeta */
   let carIdx = 0;
   const pasoCarrusel = (c) => { const t = c.querySelector('.registro'); return t ? t.getBoundingClientRect().width + 16 : 1; };

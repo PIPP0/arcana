@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,500;1,6..96,400&family=Jost:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=39">
+<link rel="stylesheet" href="styles.css?v=40">
 </head>
 <body>
 <a class="salto" href="#contenido">Saltar al contenido</a>
@@ -247,6 +247,11 @@
     <p class="bajada" style="margin-top:22px">Tus lecturas guardadas viven solo en este dispositivo. Puedes borrarlas cuando quieras.</p>
     <div class="cuenta" id="cuentaCaja" hidden><h3>Tu cuenta</h3><div id="cuentaEstado"></div></div>
     <div id="historial"></div>
+    <section class="tarjeta-p traspaso" id="traspaso">
+      <h3>Llevar mis datos</h3>
+      <p>Tus lecturas, notas, calendario y preferencias viven en este navegador. Descárgalos en un archivo y cárgalos en otro dispositivo o en una dirección nueva de ARCANA. El archivo es tuyo: no se envía a ningún servidor.</p>
+      <div class="acciones"><button type="button" class="btn chico primario" id="btnExportar">Descargar mis datos</button><button type="button" class="btn chico" id="btnImportar">Cargar mis datos</button><input type="file" id="archivoDatos" accept="application/json,.json" hidden></div>
+    </section>
   </section>
 </main>
 
@@ -281,6 +286,6 @@
 <script src="cards.js?v=15"></script>
 <script src="menores.js?v=15"></script>
 <script src="sonido.js?v=1"></script>
-<script src="app.js?v=49"></script>
+<script src="app.js?v=50"></script>
 </body>
 </html>

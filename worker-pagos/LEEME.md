@@ -10,6 +10,9 @@ Servidor: un Cloudflare Worker (gratis, sin tarjeta). Archivo: `mp-worker.js`.
 4. Si la suscripción se cancela o se pausa, la cuenta baja a Free. Un plan asignado a mano desde el panel nunca se baja.
 5. La persona también puede cancelar desde Mi perfil → «Cancelar suscripción».
 
+## Direcciones desde las que se puede pagar
+El Worker acepta `https://arcanatarot.cl`, `https://www.arcanatarot.cl` y, mientras exista, `https://pipp0.github.io`. Después del pago, la persona vuelve a la misma dirección desde la que pagó (lista `ORIGENES` en `mp-worker.js`).
+
 ## Despliegue (una vez, desde el panel de Cloudflare, sin wrangler)
 1. Cloudflare → Workers & Pages → Create → Worker → pegar `mp-worker.js` completo → Deploy.
 2. Settings → Variables and Secrets → tipo **Secret**:

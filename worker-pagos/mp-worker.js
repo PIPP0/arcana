@@ -24,8 +24,12 @@
 
 const PROYECTO = 'arcana-b1260';
 const API_KEY_WEB = 'AIzaSyDDjucDQIW33H9MQaG5cecg-FOljQFa-04'; // clave pública de la app web (la misma de nube-config.js); no es un secreto
-const ORIGEN_PERMITIDO = 'https://pipp0.github.io';
-const VOLVER_A = 'https://pipp0.github.io/arcana/?pago=ok';
+// Desde dónde se acepta pagar y a dónde se vuelve después. Acepta el dominio propio y, mientras exista, la dirección de GitHub Pages.
+const ORIGENES = {
+  'https://arcanatarot.cl': 'https://arcanatarot.cl/?pago=ok',
+  'https://www.arcanatarot.cl': 'https://www.arcanatarot.cl/?pago=ok',
+  'https://pipp0.github.io': 'https://pipp0.github.io/arcana/?pago=ok'
+};
 
 // Precios mensuales en CLP (deben coincidir con lo que se muestra en el sitio)
 const PLAN_PRECIOS = { full: 3990, premium: 6990 };
@@ -35,13 +39,12 @@ const RANGO = { free: 0, full: 1, premium: 2 };
 const FS = `https://firestore.googleapis.com/v1/projects/${PROYECTO}/databases/(default)/documents`;
 
 /* ---------- utilidades ---------- */
-function conCors(resp) {
-  resp.headers.set('Access-Control-Allow-Origin', ORIGEN_PERMITIDO);
-  resp.headers.set('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
-  resp.headers.set('Access-Control-Allow-Headers', 'Content-Type');
+function conCors(resp, origen) {
+  if (origen && ORIGENES[origen]) resp.headers.set('Access-Control-Allow-Origin', origen);
+  resp.headers.set('Vary', 'Origin');
   return resp;
 }
-const json = (obj, status) => conCors(new Response(JSON.stringify(obj), { status: status || 200, headers: { 'Content-Type': 'application/json' } }));
+const json = (obj, status) => new Response(JSON.stringify(obj), { status: status || 200, headers: { 'Content-Type': 'application/json' } });
 
 const b64u = (s) => btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const b64uBytes = (buf) => b64u(String.fromCharCode(...new Uint8Array(buf)));
@@ -131,6 +134,8 @@ async function personaDeSesion(idToken) {
 
 /* ---------- rutas ---------- */
 async function crearSuscripcion(request, env) {
+  const volver = ORIGENES[request.headers.get('Origin')];
+  if (!volver) return json({ error: 'origen no permitido' }, 403);
   let b; try { b = await request.json(); } catch (e) { return json({ error: 'cuerpo inválido' }, 400); }
   const tier = String((b && b.tier) || '');
   if (!PLAN_PRECIOS[tier]) return json({ error: 'plan inválido' }, 400);
@@ -151,7 +156,7 @@ async function crearSuscripcion(request, env) {
       external_reference: referencia,
       payer_email: yo.email,
       auto_recurring: { frequency: 1, frequency_type: 'months', transaction_amount: PLAN_PRECIOS[tier], currency_id: 'CLP' },
-      back_url: VOLVER_A,
+      back_url: volver,
       notification_url: 'https://' + host + '/mp-webhook',
       status: 'pending'
     });
@@ -164,6 +169,7 @@ async function crearSuscripcion(request, env) {
 }
 
 async function cancelarSuscripcion(request, env) {
+  if (!ORIGENES[request.headers.get('Origin')]) return json({ error: 'origen no permitido' }, 403);
   let b; try { b = await request.json(); } catch (e) { return json({ error: 'cuerpo inválido' }, 400); }
   const yo = await personaDeSesion(b && b.idToken);
   if (!yo) return json({ error: 'sesión inválida' }, 401);
@@ -216,12 +222,18 @@ async function webhook(request, env, url) {
 
 export default {
   async fetch(request, env) {
-    const url = new URL(request.url);
-    if (request.method === 'OPTIONS') return conCors(new Response(null, { status: 204 }));
-    if (url.pathname === '/crear-suscripcion' && request.method === 'POST') return crearSuscripcion(request, env);
-    if (url.pathname === '/cancelar-suscripcion' && request.method === 'POST') return cancelarSuscripcion(request, env);
-    if (url.pathname === '/mp-webhook' && (request.method === 'POST' || request.method === 'GET')) return webhook(request, env, url);
-    if (url.pathname === '/') return json({ ok: true, servicio: 'arcana-pagos' });
-    return json({ error: 'no encontrado' }, 404);
+    const origen = request.headers.get('Origin');
+    const resp = await enrutar(request, env);
+    return conCors(resp, origen);
   }
 };
+
+async function enrutar(request, env) {
+  const url = new URL(request.url);
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: { 'Access-Control-Allow-Methods': 'POST, GET, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' } });
+  if (url.pathname === '/crear-suscripcion' && request.method === 'POST') return crearSuscripcion(request, env);
+  if (url.pathname === '/cancelar-suscripcion' && request.method === 'POST') return cancelarSuscripcion(request, env);
+  if (url.pathname === '/mp-webhook' && (request.method === 'POST' || request.method === 'GET')) return webhook(request, env, url);
+  if (url.pathname === '/') return json({ ok: true, servicio: 'arcana-pagos' });
+  return json({ error: 'no encontrado' }, 404);
+}
