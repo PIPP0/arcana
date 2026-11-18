@@ -173,19 +173,19 @@
   const btnSon = $('#btnSonido'), btnEst = $('#btnEstilo'), menuSon = $('#menuSonido');
   function pintarMenuSonido() {
     if (!S || !menuSon) return;
-    menuSon.innerHTML = S.estilos.map((e) => { const ok = estiloOk(e.id); return `<button type="button" role="menuitemradio" aria-checked="${e.id === S.actual()}" data-estilo="${e.id}"${ok ? '' : ' class="bloq" data-bloq="1"'}><b>${e.id}. ${e.nombre}${ok ? '' : ' · Con suscripción'}</b><span>${ok ? e.desc : 'Descúbrelo suscribiéndote.'}</span></button>`; }).join('');
+    menuSon.innerHTML = S.estilos.map((e) => { const ok = estiloOk(e.id); return `<button type="button" role="menuitemradio" aria-checked="${e.id === S.actual()}" data-estilo="${e.id}"${ok ? '' : ' class="bloq" data-bloq="1"'}><b>${e.id}. ${e.nombre}${ok ? '' : ' · ' + bloqueo((P) => (P.estilos || {})[e.id] !== false)}</b><span>${ok ? e.desc : invitacion((P) => (P.estilos || {})[e.id] !== false) + '.'}</span></button>`; }).join('');
   }
   /* Si el perfil cambia: el estilo elegido debe estar incluido y el sonido permitido. */
   function ajustarSonidoPerfil() {
     if (!S) return;
     if (!estiloOk(S.actual())) { const ok = S.estilos.find((x) => estiloOk(x.id)); if (ok) S.poner(ok.id); }
     if (sonido && !sonidoOk()) { sonido = false; btnSon.setAttribute('aria-pressed', 'false'); btnSon.textContent = 'Sonido: no'; if (btnEst) btnEst.hidden = true; cerrarMenuSonido(); }
-    btnSon.classList.toggle('bloq', !sonidoOk()); btnSon.title = sonidoOk() ? '' : 'Con suscripción';
+    btnSon.classList.toggle('bloq', !sonidoOk()); btnSon.title = sonidoOk() ? '' : bloqueo((P) => P.sonido !== false);
     pintarMenuSonido();
   }
   function cerrarMenuSonido() { if (menuSon) menuSon.hidden = true; if (btnEst) btnEst.setAttribute('aria-expanded', 'false'); }
   btnSon.addEventListener('click', (e) => {
-    if (!sonido && !sonidoOk()) { irAPlanes('El sonido se abre con una suscripción. Mira los planes.'); return; }
+    if (!sonido && !sonidoOk()) { irDesbloqueo((P) => P.sonido !== false, 'El sonido'); return; }
     sonido = !sonido;
     e.currentTarget.setAttribute('aria-pressed', String(sonido));
     e.currentTarget.textContent = sonido ? 'Sonido: sí' : 'Sonido: no';
@@ -198,7 +198,7 @@
   });
   if (menuSon) menuSon.addEventListener('click', (e) => {
     const b = e.target.closest('[data-estilo]'); if (!b) return;
-    if (b.dataset.bloq) { cerrarMenuSonido(); irAPlanes('Este estilo de sonido se abre con una suscripción. Mira los planes.'); return; }
+    if (b.dataset.bloq) { cerrarMenuSonido(); irDesbloqueo((P) => (P.estilos || {})[b.dataset.estilo] !== false, 'Este estilo de sonido'); return; }
     S.poner(Number(b.dataset.estilo)); pintarMenuSonido(); sfx.encender(); cerrarMenuSonido(); btnEst.focus();
   });
   document.addEventListener('click', (e) => { if (menuSon && !menuSon.hidden && !e.target.closest('.sonido-caja')) cerrarMenuSonido(); });
@@ -224,9 +224,10 @@
     if (foco) { const h = $('#v-' + id + ' h1, #v-' + id + ' h2'); if (h) h.focus({ preventScroll: true }); }
   }
   document.addEventListener('click', (e) => {
+    const en = e.target.closest('[data-entrar]'); if (en) { irEntrar('Entra o crea tu cuenta gratis: guarda tus lecturas, tu calendario y tu avatar.'); return; }
     const pl = e.target.closest('[data-planes]'); if (pl) { irAPlanes(); return; }
     const sus = e.target.closest('[data-suscribir]');
-    if (sus) { ir('espacio'); aviso('Crea tu cuenta y deja todo listo: los cobros se activan muy pronto.'); return; }
+    if (sus) { if (esInvitado()) irEntrar('Primero crea tu cuenta gratis; después te suscribes. Los cobros se activan muy pronto.'); else { ir('espacio'); aviso('Crea tu cuenta y deja todo listo: los cobros se activan muy pronto.'); } return; }
     const b = e.target.closest('[data-ir]');
     if (b) ir(b.dataset.ir);
   });
@@ -270,7 +271,7 @@
   $$('.rueda').forEach((el) => { el.innerHTML = `<img alt="" src="${el.classList.contains('dos') ? IMG2 : IMG1}">`; });
   document.documentElement.style.setProperty('--astro', `url("${IMG1}")`);
   const permisos = () => window.Nube.permisos();
-  const NOMBRE_PERFIL = { free: 'Free', full: 'Full', premium: 'Premium' };
+  const NOMBRE_PERFIL = { invitado: 'Invitado', free: 'Free', full: 'Full', premium: 'Premium' };
   const mazoVisible = (id) => ((window.Nube.funciones().mazos) || {})[id] !== false;
   const mazoActivo = (id) => mazoVisible(id) && ((permisos().mazos) || {})[id] !== false;
   const mazoIncluido = (id) => ((permisos().mazos) || {})[id] !== false;
@@ -278,7 +279,17 @@
   /* Qué plan abre algo que el perfil actual no incluye (el más barato que lo tenga). */
   const NOMBRES_PLAN = { free: 'Free', full: 'Full', premium: 'Premium' };
   function planQueAbre(prueba) { const T = window.Nube.todosPerfiles(); return ['full', 'premium'].find((k) => prueba(T[k] || {})) || 'premium'; }
-  const bloqueo = () => 'Con suscripción';
+  /* Sin sesión (Invitado) lo que Free ya incluye se abre «entrando gratis»; lo demás, suscribiéndose. */
+  const esInvitado = () => window.Nube.perfil() === 'invitado';
+  function desbloqueo(prueba) { const T = window.Nube.todosPerfiles(); return esInvitado() && prueba(T.free || {}) ? 'entrar' : 'suscribir'; }
+  const bloqueo = (prueba) => (prueba && desbloqueo(prueba) === 'entrar' ? 'Entra gratis' : 'Con suscripción');
+  const invitacion = (prueba) => (desbloqueo(prueba) === 'entrar' ? 'Descúbrelo entrando gratis' : 'Descúbrelo suscribiéndote');
+  const attrDesb = (prueba) => (desbloqueo(prueba) === 'entrar' ? 'data-entrar="1"' : 'data-planes="1"');
+  function irEntrar(msg) { ir('perfil'); if (msg) aviso(msg); }
+  function irDesbloqueo(prueba, que) {
+    if (desbloqueo(prueba) === 'entrar') irEntrar(`${que} se abre entrando gratis. Crea tu cuenta en un minuto.`);
+    else irAPlanes(`${que} se abre con una suscripción. Mira los planes.`);
+  }
   function irAPlanes(msg) {
     ir('inicio', false);
     setTimeout(() => { const p = $('#planes'); if (p) p.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 60);
@@ -296,11 +307,14 @@
     const t = tope(); if (t === null) return '';
     const p = NOMBRE_PERFIL[window.Nube.perfil()];
     const pl = (n) => (n === 1 ? 'lectura' : 'lecturas');
+    if (esInvitado()) return cupoAgotado() ? `Hoy ya hiciste tus ${t} ${pl(t)} como invitado. Entra gratis para seguir leyendo.` : `Como invitado te quedan ${t - lecturasHoy()} de ${t} ${pl(t)} hoy.`;
     return cupoAgotado() ? `Hoy ya hiciste tus ${t} ${pl(t)} del perfil ${p}. Mañana vuelves a tener ${t}.` : `Perfil ${p}: te quedan ${t - lecturasHoy()} de ${t} ${pl(t)} hoy.`;
   }
   function pintarCupo() {
     const n = $('#cupoNota'); if (!n) return; const x = textoCupo(); n.hidden = !x;
-    n.innerHTML = x ? esc(x) + (cupoAgotado() || window.Nube.perfil() === 'free' ? ` <button type="button" class="enlace-p" data-planes="1">${cupoAgotado() ? 'Sigue leyendo hoy suscribiéndote' : 'Lee sin límites suscribiéndote'} →</button>` : '') : '';
+    n.innerHTML = x ? esc(x) + (esInvitado()
+      ? ` <button type="button" class="enlace-p" data-entrar="1">${cupoAgotado() ? 'Entra gratis y sigue leyendo' : 'Entra gratis y lee más'} →</button>`
+      : (cupoAgotado() || window.Nube.perfil() === 'free' ? ` <button type="button" class="enlace-p" data-planes="1">${cupoAgotado() ? 'Sigue leyendo hoy suscribiéndote' : 'Lee sin límites suscribiéndote'} →</button>` : '')) : '';
     n.classList.toggle('agotado', cupoAgotado());
   }
   const activos = () => MAZOS.filter((m) => !m.pendiente && mazoVisible(m.id));
@@ -318,7 +332,7 @@
   const pintarVitrina = () => { $('#vitrina').innerHTML = activos().map((m) =>
     `<li class="vit tema-${m.id}${mazoIncluido(m.id) ? '' : ' bloq'}"><span class="abanico" aria-hidden="true">${m.muestra.slice(0, 3).map((i) => carta(cara(i, m.id, false), m.id)).join('')}</span>
       <p class="precio">${m.anio} · ${m.lugar}</p><h3>${m.nombre}</h3><p>${m.tecnica}. 78 cartas.</p>
-      ${mazoIncluido(m.id) ? '' : `<button type="button" class="suscr" data-planes="1"><span class="sello-p">${bloqueo((P) => (P.mazos || {})[m.id] !== false)}</span>Descúbrelo suscribiéndote →</button>`}</li>`).join('');
+      ${mazoIncluido(m.id) ? '' : `<button type="button" class="suscr" ${attrDesb((P) => (P.mazos || {})[m.id] !== false)}><span class="sello-p">${bloqueo((P) => (P.mazos || {})[m.id] !== false)}</span>${invitacion((P) => (P.mazos || {})[m.id] !== false)} →</button>`}</li>`).join('');
     ajustarTextosMazos(); };
   pintarVitrina();
 
@@ -369,6 +383,7 @@
           <div><b>Ten presente</b><p>${k.sombra}</p></div>
           <div class="noche"><b>Una pregunta para ti</b><p>${k.pregunta}</p></div>
         </div>
+        ${window.Nube.usuario() ? '' : '<div class="persuade corta"><b>Que tu carta te siga</b><p>Entra gratis y tu carta del día queda en tu cuenta, igual en todos tus dispositivos, con tu calendario.</p><div class="acciones"><button type="button" class="btn chico primario" data-entrar="1">Entrar gratis</button></div></div>'}
         <div class="acciones"><button type="button" class="btn primario" data-ir="mazo">Profundizar con tres cartas</button></div>`;
     }
     function guardarVista(v) { g.vista = v; guardarG(); }
@@ -396,8 +411,8 @@
           if (f.hoy && f.hoy.dia === hoy && Number.isInteger(f.hoy.carta) && CARTAS[f.hoy.carta]) { if (f.hoy.carta !== g.carta) cambiarCarta(f.hoy.carta); }
           else if (!reclamada) { reclamada = true; window.Nube.guardarFicha({ hoy: { dia: hoy, carta: g.carta } }).catch(() => { /* sin reglas nuevas: queda en este navegador */ }); }
         }
-        if (visible()) guardarVista(true); else if (g.vista) mostrar();
-      } else if (g.vista) guardarVista(false);
+        if (visible()) { mostrar(); guardarVista(true); } else if (g.vista) mostrar();
+      } else { if (visible()) mostrar(); if (g.vista) guardarVista(false); }
     });
   })();
 
@@ -427,12 +442,12 @@
       <span class="abanico cinco" aria-hidden="true">${m.muestra.map((i) => carta(cara(i, m.id, false), m.id)).join('')}</span>
       <span class="ficha"><span class="precio">${m.anio} · ${m.lugar}</span><h3>${m.nombre}</h3>
         <p>${m.desc}</p><span class="etiqueta">78 cartas · ${m.tecnica}</span>
-        <span class="elegir">${mazoIncluido(m.id) ? 'Leer con este mazo →' : 'Descúbrelo suscribiéndote →'}</span></span>
+        <span class="elegir">${mazoIncluido(m.id) ? 'Leer con este mazo →' : invitacion((P) => (P.mazos || {})[m.id] !== false) + ' →'}</span></span>
     </button>`).join(''); };
   pintarListaMazos();
   $('#listaMazos').addEventListener('click', (e) => {
     const b = e.target.closest('[data-mazo]'); if (!b) return;
-    if (b.dataset.bloq) { sfx.negado(); irAPlanes('Este mazo se abre con una suscripción. Mira los planes.'); return; }
+    if (b.dataset.bloq) { sfx.negado(); irDesbloqueo((P) => (P.mazos || {})[b.dataset.mazo] !== false, 'Este mazo'); return; }
     if (cupoAgotado()) { sfx.negado(); aviso(textoCupo()); return; }
     estado.mazo = b.dataset.mazo; sfx.mazo(); ir('intencion');
   });
@@ -442,13 +457,13 @@
     if (!temasPermitidos().some((t) => t.id === estado.tema)) estado.tema = 'general';
     $('#listaTemas').innerHTML = TEMAS.map((t) => {
       const bl = t.id === 'libre' && permisos().temaLibre === false;
-      return `<button type="button" class="tema-p${bl ? ' bloq' : ''}" role="radio" aria-checked="${t.id === estado.tema}" data-tema="${t.id}"${bl ? ' data-bloq="1"' : ''} tabindex="${t.id === estado.tema ? 0 : -1}"><img src="${src(estado.mazo, TEMA_IMG[t.id])}" alt="" decoding="async"><span>${t.nombre}${bl ? `<small>Descúbrelo suscribiéndote</small>` : ''}</span></button>`;
+      return `<button type="button" class="tema-p${bl ? ' bloq' : ''}" role="radio" aria-checked="${t.id === estado.tema}" data-tema="${t.id}"${bl ? ' data-bloq="1"' : ''} tabindex="${t.id === estado.tema ? 0 : -1}"><img src="${src(estado.mazo, TEMA_IMG[t.id])}" alt="" decoding="async"><span>${t.nombre}${bl ? `<small>${invitacion((P) => P.temaLibre !== false)}</small>` : ''}</span></button>`;
     }).join('');
   }
   pintarTemas();
   $('#listaTemas').addEventListener('click', (e) => {
     const b = e.target.closest('[data-tema]'); if (!b) return;
-    if (b.dataset.bloq) { sfx.negado(); irAPlanes('La pregunta libre se abre con una suscripción. Mira los planes.'); return; }
+    if (b.dataset.bloq) { sfx.negado(); irDesbloqueo((P) => P.temaLibre !== false, 'La pregunta libre'); return; }
     estado.tema = b.dataset.tema; sfx.tick(); pintarTemas(); $(`[data-tema="${estado.tema}"]`).focus();
   });
   $('#listaTemas').addEventListener('keydown', (e) => {
@@ -475,13 +490,13 @@
         <span class="precio">${TIRADA_INFO[t.id].min}</span>
         <h3>${t.nombre}</h3><p>${t.desc}</p><p class="para">${TIRADA_INFO[t.id].para}</p>
         <span class="sr">Posiciones: ${t.pos.map((p) => p.nombre).join(', ')}</span>
-        <span class="elegir">${tiradaIncluida(t.id) ? 'Elegir esta tirada' : 'Descúbrela suscribiéndote →'}</span>
+        <span class="elegir">${tiradaIncluida(t.id) ? 'Elegir esta tirada' : invitacion((P) => (P.tiradas || {})[t.id] !== false).replace('Descúbrelo', 'Descúbrela') + ' →'}</span>
       </button>`).join('');
   }
   pintarTiradas();
   $('#listaTiradas').addEventListener('click', (e) => {
     const b = e.target.closest('[data-tirada]'); if (!b) return;
-    if (b.dataset.bloq) { sfx.negado(); irAPlanes('Esta tirada se abre con una suscripción. Mira los planes.'); return; }
+    if (b.dataset.bloq) { sfx.negado(); irDesbloqueo((P) => (P.tiradas || {})[b.dataset.tirada] !== false, 'Esta tirada'); return; }
     if (cupoAgotado()) { sfx.negado(); aviso(textoCupo()); return; }
     sfx.tirada(); estado.tirada = TIRADAS.find((t) => t.id === b.dataset.tirada); ir('barajar');
   });
@@ -639,12 +654,19 @@
     return h;
   }
 
+  /* Sin plan que guarde lecturas: se invita a entrar o a suscribirse, en vez de dejar un hueco. */
+  function persuadirGuardar() {
+    const entrar = desbloqueo((P) => P.diario !== false) === 'entrar';
+    return `<div class="persuade"><b>${entrar ? 'Guarda esta lectura' : 'Guarda tus lecturas y tus notas'}</b>
+      <p>${entrar ? 'Entra gratis para guardar tus lecturas con tus notas, llevar tu calendario de cartas y tener tu avatar.' : 'Con una suscripción puedes guardar tus lecturas, escribir notas y volver a ellas cuando quieras.'}</p>
+      <div class="acciones">${entrar ? '<button type="button" class="btn primario" data-entrar="1">Entrar gratis</button><button type="button" class="btn" data-planes="1">Ver planes</button>' : '<button type="button" class="btn primario" data-planes="1">Ver planes</button>'}</div></div>`;
+  }
   function pintarInterpretacion() {
     const ids = cartasDeLectura();
     let h = cuerpoLectura({ ids, pos: estado.tirada.pos, tirada: estado.tirada.id, mz: estado.mazo, tema: estado.tema, pregunta: estado.pregunta });
     const mz = estado.mazo;
     h += `<section class="cierre"><h3>Tu reflexión</h3>
-      ${permisos().diario === false ? '' : `<label class="campo" for="notaLectura" style="margin-top:8px">Una nota privada <span>(opcional)</span></label>
+      ${permisos().diario === false ? persuadirGuardar() : `<label class="campo" for="notaLectura" style="margin-top:8px">Una nota privada <span>(opcional)</span></label>
       <textarea id="notaLectura" rows="3" maxlength="1000" placeholder="¿Qué te llevas de esta lectura?"></textarea>`}
       <div class="acciones">
         ${permisos().diario === false ? '' : '<button type="button" class="btn primario" id="btnGuardar">Guardar en mi espacio</button>'}
@@ -669,6 +691,19 @@
   const fmtDiaLargo = new Intl.DateTimeFormat('es-CL', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   function pintarCalendario() {
     const grid = $('#calGrid'); if (!grid) return;
+    const calOk = permisos().calendario !== false, calSec = $('#calendario');
+    if (calSec) calSec.classList.toggle('bloqueado', !calOk);
+    const bloq = $('#calBloq');
+    if (bloq) {
+      bloq.hidden = calOk;
+      if (!calOk) {
+        const n = Object.keys(leerHist()).length, entrar = desbloqueo((P) => P.calendario !== false) === 'entrar';
+        bloq.innerHTML = `<b>${entrar ? 'Tu calendario te espera' : 'Desbloquea tu calendario'}</b>
+          <p>${n ? `Ya llevas <b>${n}</b> ${n === 1 ? 'carta anotada' : 'cartas anotadas'} en este navegador. ` : ''}${entrar ? 'Entra gratis para ver cada carta que diste vuelta, tu racha y volver a leer su mensaje.' : 'Con una suscripción ves cada carta que diste vuelta, tu racha y su mensaje.'}</p>
+          <div class="acciones">${entrar ? '<button type="button" class="btn primario" data-entrar="1">Entrar gratis</button>' : ''}<button type="button" class="btn${entrar ? '' : ' primario'}" data-planes="1">Ver planes</button></div>`;
+      }
+    }
+    if (!calOk) return;
     const hist = leerHist(), hoy = diaHoy(), [hy, hm] = hoy.split('-').map(Number);
     const dados = Object.keys(hist).filter((f) => CARTAS[hist[f]]).sort();
     if (cal.y === null) { cal.y = hy; cal.m = hm - 1; cal.sel = hist[hoy] !== undefined ? hoy : (dados[dados.length - 1] || null); }
@@ -736,6 +771,7 @@
   function pintarHistorial() {
     const a = leer(), el = $('#historial');
     if (!a.length) {
+      if (permisos().diario === false) { el.innerHTML = `<div class="vacio">${persuadirGuardar()}</div>`; return; }
       el.innerHTML = `<div class="vacio"><p>Todavía no guardas ninguna lectura.</p><div class="acciones" style="justify-content:center"><button type="button" class="btn primario" data-ir="mazo">Comenzar mi lectura</button></div></div>`;
       return;
     }
@@ -1047,6 +1083,7 @@
   function pintarPlanes() {
     const caja = $('#planesG'); if (!caja) return;
     const T = window.Nube.todosPerfiles(), actual = window.Nube.usuario() ? window.Nube.perfil() : null;
+    const inv = $('#planesInv'); if (inv) inv.hidden = !esInvitado();
     caja.innerHTML = ['free', 'full', 'premium'].map((k) => {
       const P = T[k] || {}, X = PLAN_TEXTO[k];
       const li = (ok, t) => `<li${ok ? '' : ' class="no"'}>${t}</li>`;
@@ -1058,7 +1095,7 @@
         .concat([li(true, typeof P.lecturasDia === 'number' ? `${P.lecturasDia} lecturas al día` : 'Lecturas sin límite')])
         .concat([P.diario === false ? li(false, 'Guardar lecturas y notas') : li(true, typeof P.guardadas === 'number' ? `Guarda hasta ${P.guardadas} lecturas` : 'Diario sin límite')]);
       const boton = actual === k ? '<button type="button" class="btn" disabled>Tu plan actual</button>'
-        : k === 'free' ? `<button type="button" class="btn" data-ir="mazo">${X.boton}</button>`
+        : k === 'free' ? (esInvitado() ? '<button type="button" class="btn primario" data-entrar="1">Crear mi cuenta gratis</button>' : `<button type="button" class="btn" data-ir="mazo">${X.boton}</button>`)
           : `<button type="button" class="btn${k === 'premium' ? ' primario' : ''}" data-suscribir="${k}">${X.boton}</button>`;
       return `<li class="plan${k === 'premium' ? ' dest' : ''} revela visto">${X.cinta ? `<p class="cinta">${X.cinta}</p>` : ''}
         <h3>${NOMBRES_PLAN[k]}</h3><p class="lema">${X.lema}</p>

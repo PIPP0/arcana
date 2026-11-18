@@ -13,9 +13,10 @@
   /* Perfiles: lo que cada uno incluye. null en un tope = sin límite. El admin lo cambia en config/perfiles. */
   const T3 = { una: true, tiempo: true, perspectivas: true };
   const PERF_DEF = {
-    free: { precio: 'Gratis', periodo: 'Disponible hoy', sonido: true, estilos: { 1: true, 2: false, 3: false, 4: false, 5: false }, tiradas: { una: true, tiempo: true, perspectivas: false }, mazos: { rws: true, dodal: true, sola: false }, temaLibre: false, diario: true, lecturasDia: 5, guardadas: 10 },
-    full: { precio: '$3.990', periodo: 'al mes', sonido: true, estilos: { 1: true, 2: true, 3: true, 4: false, 5: false }, tiradas: Object.assign({}, T3), mazos: { rws: true, dodal: true, sola: true }, temaLibre: true, diario: true, lecturasDia: 15, guardadas: 100 },
-    premium: { precio: '$6.990', periodo: 'al mes', sonido: true, estilos: { 1: true, 2: true, 3: true, 4: true, 5: true }, tiradas: Object.assign({}, T3), mazos: { rws: true, dodal: true, sola: true }, temaLibre: true, diario: true, lecturasDia: null, guardadas: null }
+    invitado: { precio: '', periodo: '', sonido: true, estilos: { 1: true, 2: false, 3: false, 4: false, 5: false }, calendario: false, tiradas: { una: true, tiempo: false, perspectivas: false }, mazos: { rws: true, dodal: false, sola: false }, temaLibre: false, diario: false, lecturasDia: 3, guardadas: 0 },
+    free: { precio: 'Gratis', periodo: 'Disponible hoy', sonido: true, calendario: true, estilos: { 1: true, 2: false, 3: false, 4: false, 5: false }, tiradas: { una: true, tiempo: true, perspectivas: false }, mazos: { rws: true, dodal: true, sola: false }, temaLibre: false, diario: true, lecturasDia: 5, guardadas: 10 },
+    full: { precio: '$3.990', periodo: 'al mes', sonido: true, calendario: true, estilos: { 1: true, 2: true, 3: true, 4: false, 5: false }, tiradas: Object.assign({}, T3), mazos: { rws: true, dodal: true, sola: true }, temaLibre: true, diario: true, lecturasDia: 15, guardadas: 100 },
+    premium: { precio: '$6.990', periodo: 'al mes', sonido: true, calendario: true, estilos: { 1: true, 2: true, 3: true, 4: true, 5: true }, tiradas: Object.assign({}, T3), mazos: { rws: true, dodal: true, sola: true }, temaLibre: true, diario: true, lecturasDia: null, guardadas: null }
   };
   const PERFILES = ['free', 'full', 'premium'];
 
@@ -32,7 +33,7 @@
   let guardadoP = null;
   try { guardadoP = JSON.parse(localStorage.getItem(CACHE_P)); } catch (e) { /* sin almacenamiento */ }
   let PF = mezclar(PERF_DEF, guardadoP);
-  let miPerfil = 'free';
+  let miPerfil = 'invitado';
   let usuario = null, ficha = null;
   const oyentesF = [], oyentesU = [];
   const aleatorio = (n) => { const a = new Uint8Array(n); crypto.getRandomValues(a); return Array.from(a, (x) => 'abcdefghijklmnopqrstuvwxyz0123456789'[x % 36]).join(''); };
@@ -131,7 +132,7 @@
       usuario = u && !u.isAnonymous && u.email ? { uid: u.uid, nombre: u.displayName || '', email: u.email, proveedor: (u.providerData && u.providerData[0] && u.providerData[0].providerId === 'password') ? 'correo' : 'google' } : null;
       if (!usuario) ficha = null;
       avisarU();
-      if (usuario) { tocarPersona(u, c, false); leerPerfil(u, c); } else if (miPerfil !== 'free') { miPerfil = 'free'; avisarF(); }
+      if (usuario) { if (miPerfil === 'invitado') { miPerfil = 'free'; avisarF(); } tocarPersona(u, c, false); leerPerfil(u, c); } else if (miPerfil !== 'invitado') { miPerfil = 'invitado'; avisarF(); }
     });
   }
   async function leerPerfil(u, c) {

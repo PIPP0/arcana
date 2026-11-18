@@ -17,12 +17,14 @@
   const DEF = { cartaDelDia: true, desfile: true, planes: true, cuentas: true, medicion: true, mazos: { rws: true, dodal: true, sola: true }, aviso: { activo: false, texto: '' } };
   const T3 = { una: true, tiempo: true, perspectivas: true };
   const PERF_DEF = {
-    free: { precio: 'Gratis', periodo: 'Disponible hoy', sonido: true, estilos: { 1: true, 2: false, 3: false, 4: false, 5: false }, tiradas: { una: true, tiempo: true, perspectivas: false }, mazos: { rws: true, dodal: true, sola: false }, temaLibre: false, diario: true, lecturasDia: 5, guardadas: 10 },
-    full: { precio: '$3.990', periodo: 'al mes', sonido: true, estilos: { 1: true, 2: true, 3: true, 4: false, 5: false }, tiradas: Object.assign({}, T3), mazos: { rws: true, dodal: true, sola: true }, temaLibre: true, diario: true, lecturasDia: 15, guardadas: 100 },
-    premium: { precio: '$6.990', periodo: 'al mes', sonido: true, estilos: { 1: true, 2: true, 3: true, 4: true, 5: true }, tiradas: Object.assign({}, T3), mazos: { rws: true, dodal: true, sola: true }, temaLibre: true, diario: true, lecturasDia: null, guardadas: null }
+    invitado: { precio: '', periodo: '', sonido: true, estilos: { 1: true, 2: false, 3: false, 4: false, 5: false }, calendario: false, tiradas: { una: true, tiempo: false, perspectivas: false }, mazos: { rws: true, dodal: false, sola: false }, temaLibre: false, diario: false, lecturasDia: 3, guardadas: 0 },
+    free: { precio: 'Gratis', periodo: 'Disponible hoy', sonido: true, calendario: true, estilos: { 1: true, 2: false, 3: false, 4: false, 5: false }, tiradas: { una: true, tiempo: true, perspectivas: false }, mazos: { rws: true, dodal: true, sola: false }, temaLibre: false, diario: true, lecturasDia: 5, guardadas: 10 },
+    full: { precio: '$3.990', periodo: 'al mes', sonido: true, calendario: true, estilos: { 1: true, 2: true, 3: true, 4: false, 5: false }, tiradas: Object.assign({}, T3), mazos: { rws: true, dodal: true, sola: true }, temaLibre: true, diario: true, lecturasDia: 15, guardadas: 100 },
+    premium: { precio: '$6.990', periodo: 'al mes', sonido: true, calendario: true, estilos: { 1: true, 2: true, 3: true, 4: true, 5: true }, tiradas: Object.assign({}, T3), mazos: { rws: true, dodal: true, sola: true }, temaLibre: true, diario: true, lecturasDia: null, guardadas: null }
   };
   const ESTILOS_SONIDO = [[1, 'Cristal y campanas'], [2, 'Cuenco tibetano y aliento'], [3, 'Arpa celestial'], [4, 'Cajita de música'], [5, 'Ritual y misterio']];
   const PERFILES = [['free', 'Free'], ['full', 'Full'], ['premium', 'Premium']];
+  const PERFILES_TODOS = [['invitado', 'Invitado (sin sesión)']].concat(PERFILES);
   const esObj = (x) => x && typeof x === 'object' && !Array.isArray(x) && !(x instanceof Date);
   const clonar = (o) => (esObj(o) ? Object.keys(o).reduce((r, k) => { r[k] = clonar(o[k]); return r; }, {}) : o);
   const mezclar = (a, b) => { const o = clonar(a); Object.keys(b || {}).forEach((k) => { o[k] = esObj(b[k]) ? mezclar(o[k] || {}, b[k]) : b[k]; }); return o; };
@@ -323,27 +325,28 @@
     E.datos.personas.forEach((p) => { cont[PERFILES.some((x) => x[0] === p.perfil) ? p.perfil : 'free'] += 1; });
     const celdaB = (id, on, rot) => `<td>${interruptor(id, on, rot)}</td>`;
     const celdaN = (id, v, rot) => `<td><input type="number" min="0" step="1" class="num" id="${id}" value="${v === null || v === undefined ? '' : v}" placeholder="Sin límite" aria-label="${esc(rot)}"></td>`;
-    const filaB = (t, d, f) => `<tr><td><b style="font-weight:400">${t}</b>${d ? `<div class="nota" style="color:var(--tenue);font-size:.85rem">${d}</div>` : ''}</td>${PERFILES.map(([k]) => celdaB(f(k).id, f(k).on, t + ' · ' + k)).join('')}</tr>`;
-    const filaT = (t, d, campo) => `<tr><td><b style="font-weight:400">${t}</b><div class="nota" style="color:var(--tenue);font-size:.85rem">${d}</div></td>${PERFILES.map(([k]) => `<td><input type="text" class="txt" maxlength="24" id="pt_${k}_${campo}" value="${esc(P[k][campo] || '')}" aria-label="${esc(t + ' · ' + k)}"></td>`).join('')}</tr>`;
-    const filaN = (t, d, campo) => `<tr><td><b style="font-weight:400">${t}</b><div class="nota" style="color:var(--tenue);font-size:.85rem">${d}</div></td>${PERFILES.map(([k]) => celdaN('pn_' + k + '_' + campo, P[k][campo], t + ' · ' + k)).join('')}</tr>`;
-    let h = cabeza('Perfiles', 'Qué incluye cada perfil. Quien no ha entrado, o no tiene perfil asignado, usa Free. Lo que un perfil no incluye no se le muestra; los topes se explican cuando se agotan.', `<button type="button" class="btn chico" id="recargar">Actualizar</button>`);
+    const filaB = (t, d, f) => `<tr><td><b style="font-weight:400">${t}</b>${d ? `<div class="nota" style="color:var(--tenue);font-size:.85rem">${d}</div>` : ''}</td>${PERFILES_TODOS.map(([k]) => celdaB(f(k).id, f(k).on, t + ' · ' + k)).join('')}</tr>`;
+    const filaT = (t, d, campo) => `<tr><td><b style="font-weight:400">${t}</b><div class="nota" style="color:var(--tenue);font-size:.85rem">${d}</div></td>${PERFILES_TODOS.map(([k]) => `<td><input type="text" class="txt" maxlength="24" id="pt_${k}_${campo}" value="${esc(P[k][campo] || '')}" aria-label="${esc(t + ' · ' + k)}"></td>`).join('')}</tr>`;
+    const filaN = (t, d, campo) => `<tr><td><b style="font-weight:400">${t}</b><div class="nota" style="color:var(--tenue);font-size:.85rem">${d}</div></td>${PERFILES_TODOS.map(([k]) => celdaN('pn_' + k + '_' + campo, P[k][campo], t + ' · ' + k)).join('')}</tr>`;
+    let h = cabeza('Perfiles', 'Qué incluye cada perfil. Quien no ha entrado usa <b>Invitado</b> (lo básico, con invitaciones a entrar gratis y suscribirse). Quien entra sin plan asignado usa Free. Lo que un perfil no incluye no se le muestra; los topes se explican cuando se agotan.', `<button type="button" class="btn chico" id="recargar">Actualizar</button>`);
     h += `<div class="kpis">${PERFILES.map(([k, n]) => `<div class="kpi"><div class="t">${n}</div><div class="n">${n0(cont[k])}</div><div class="d">cuentas con este perfil</div></div>`).join('')}</div>`;
     h += `<div class="tarjeta"><h2>Funciones por perfil</h2><p class="nota">Los interruptores generales de «Funciones» siguen mandando: si un mazo está apagado allí, no aparece en ningún perfil. Los cambios llegan a las visitas en su próxima carga.</p>
-      <div class="tabla-c"><table><thead><tr><th>Función</th>${PERFILES.map(([, n]) => `<th>${n}</th>`).join('')}</tr></thead><tbody>
-      <tr class="sub"><td colspan="4"><b>Cómo se muestra en la portada</b></td></tr>
+      <div class="tabla-c"><table><thead><tr><th>Función</th>${PERFILES_TODOS.map(([, n]) => `<th>${n}</th>`).join('')}</tr></thead><tbody>
+      <tr class="sub"><td colspan="5"><b>Cómo se muestra en la portada</b></td></tr>
       ${filaT('Precio', 'Texto grande de la tarjeta del plan. Por ejemplo $3.990 o Gratis.', 'precio')}
       ${filaT('Periodo', 'Texto pequeño bajo el precio. Por ejemplo «al mes».', 'periodo')}
-      <tr class="sub"><td colspan="4"><b>Tiradas</b></td></tr>
+      <tr class="sub"><td colspan="5"><b>Tiradas</b></td></tr>
       ${Object.keys(TIRADAS).map((t) => filaB(TIRADAS[t], '', (k) => ({ id: `pb_${k}_t_${t}`, on: P[k].tiradas[t] !== false }))).join('')}
-      <tr class="sub"><td colspan="4"><b>Mazos</b></td></tr>
+      <tr class="sub"><td colspan="5"><b>Mazos</b></td></tr>
       ${Object.keys(MAZOS).map((m) => filaB('Mazo ' + MAZOS[m], '', (k) => ({ id: `pb_${k}_m_${m}`, on: P[k].mazos[m] !== false }))).join('')}
-      <tr class="sub"><td colspan="4"><b>Lecturas</b></td></tr>
+      <tr class="sub"><td colspan="5"><b>Lecturas</b></td></tr>
       ${filaB('Pregunta libre', 'Tema donde la persona escribe su propia pregunta.', (k) => ({ id: `pb_${k}_temaLibre`, on: P[k].temaLibre !== false }))}
+      ${filaB('Calendario de cartas', 'Calendario de la carta del día en Mi espacio. Si lo apagas, invita a entrar o a suscribirse.', (k) => ({ id: `pb_${k}_calendario`, on: P[k].calendario !== false }))}
       ${filaB('Guardar lecturas y notas', 'Diario privado en Mi espacio. Si lo apagas, no aparece el botón de guardar.', (k) => ({ id: `pb_${k}_diario`, on: P[k].diario !== false }))}
-      <tr class="sub"><td colspan="4"><b>Sonido</b></td></tr>
+      <tr class="sub"><td colspan="5"><b>Sonido</b></td></tr>
       ${filaB('Sonido en el sitio', 'Si lo apagas, el botón «Sonido» invita a suscribirse en vez de activarse.', (k) => ({ id: `pb_${k}_sonido`, on: P[k].sonido !== false }))}
       ${ESTILOS_SONIDO.map(([n, t]) => filaB('Estilo ' + n + ' · ' + t, '', (k) => ({ id: `pb_${k}_s_${n}`, on: (P[k].estilos || {})[n] !== false }))).join('')}
-      <tr class="sub"><td colspan="4"><b>Topes</b> (vacío = sin límite)</td></tr>
+      <tr class="sub"><td colspan="5"><b>Topes</b> (vacío = sin límite)</td></tr>
       ${filaN('Lecturas por día', 'Se cuentan en el dispositivo de la persona, por día de Chile.', 'lecturasDia')}
       ${filaN('Lecturas guardadas', 'Cuántas puede conservar en Mi espacio.', 'guardadas')}
       </tbody></table></div>

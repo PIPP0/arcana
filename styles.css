@@ -809,3 +809,18 @@ span.cal-d.fut { opacity: .38; }
 
 /* el celular nunca se desplaza hacia los lados: los adornos que sobresalen (astrolabio) se recortan en el borde */
 html, body { overflow-x: clip; }
+
+/* invitaciones a entrar gratis o suscribirse */
+.persuade { margin-top: 18px; padding: 18px 20px; border-radius: 16px; border: 1px solid color-mix(in srgb, var(--oro) 55%, transparent); background: linear-gradient(180deg, rgba(226,193,124,.12), rgba(226,193,124,.04)); text-align: left; }
+.persuade > b { display: block; font-family: var(--serif); font-weight: 400; font-size: 1.25rem; color: var(--oro-claro); }
+.persuade > p { margin: 6px 0 0; color: var(--lavanda); font-size: .96rem; line-height: 1.55; }
+.persuade .acciones { margin-top: 12px; justify-content: flex-start; }
+.persuade.corta { padding: 14px 16px; }
+.persuade.corta > b { font-size: 1.1rem; }
+.cal-bloq { display: block; margin: 14px 0 0; }
+.cal-bloq[hidden] { display: none; }
+.calendario.bloqueado .cal-nav, .calendario.bloqueado .cal-stats, .calendario.bloqueado .cal-cuadro, .calendario.bloqueado .cal-det { display: none; }
+.persuade-inv { margin: 10px auto 0; max-width: 46em; text-align: center; padding: 12px 16px; border-radius: 14px; border: 1px dashed var(--oro); background: color-mix(in srgb, var(--oro) 8%, transparent); color: var(--lavanda); font-size: .96rem; }
+.persuade-inv[hidden] { display: none; }
+.persuade-inv b { color: var(--oro-claro); font-weight: 500; }
+.vacio .persuade { text-align: left; }
