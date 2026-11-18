@@ -625,8 +625,8 @@
     let h = '<span class="cal-v"></span>'.repeat(primero);
     for (let d = 1; d <= dias; d++) {
       const f = `${cal.y}-${String(cal.m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`, id = hist[f], esHoy = f === hoy;
-      if (id !== undefined && CARTAS[id]) h += `<button type="button" class="cal-d con${esHoy ? ' hoy' : ''}${cal.sel === f ? ' sel' : ''}" data-dia="${f}" aria-pressed="${cal.sel === f}" aria-label="${d} de ${MESES[cal.m]}: ${esc(CARTAS[id].nombre)}"><img src="${src('rws', id)}" alt="" loading="lazy" decoding="async"><span>${d}</span></button>`;
-      else h += `<span class="cal-d${esHoy ? ' hoy' : ''}${f > hoy ? ' fut' : ''}"><span>${d}</span></span>`;
+      if (id !== undefined && CARTAS[id]) h += `<button type="button" class="cal-d con${esHoy ? ' es-hoy' : ''}${cal.sel === f ? ' sel' : ''}" data-dia="${f}" aria-pressed="${cal.sel === f}" aria-label="${d} de ${MESES[cal.m]}: ${esc(CARTAS[id].nombre)}"><img src="${src('rws', id)}" alt="" loading="lazy" decoding="async"><span>${d}</span></button>`;
+      else h += `<span class="cal-d${esHoy ? ' es-hoy' : ''}${f > hoy ? ' fut' : ''}"><span>${d}</span></span>`;
     }
     grid.innerHTML = h;
     // estadísticas: cartas del mes, total y racha
