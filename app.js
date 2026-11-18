@@ -119,7 +119,7 @@
     }
     estado.orden = a;
   }
-  const src = (mazo, i) => `img/${mazo}/${String(i).padStart(2, '0')}.webp`;
+  const src = (mazo, i) => `img/${mazo}/${String(i).padStart(2, '0')}.webp${mazo === 'rws' ? '?v=2' : ''}`;
   const cara = (i, mazo, lazy = true) =>
     `<img src="${src(mazo, i)}" alt="${esc(CARTAS[i].nombre)}" ${lazy ? 'loading="lazy"' : ''} decoding="async" draggable="false">`;
   const reverso = (mazo) => (mazo === 'sola' ? reversoDibujado() : `<img src="img/${mazo}/back.webp" alt="" decoding="async" draggable="false">`);
@@ -491,7 +491,11 @@
     if (sono === 'elegir') sfx.elegir(estado.elegidas.indexOf(k)); else sfx.soltar();
     actualizarElegir();
   });
-  $('#btnConfirmar').addEventListener('click', () => { sfx.confirmar(); pintarLectura(); ir('lectura'); });
+  $('#btnConfirmar').addEventListener('click', () => {
+    sfx.confirmar(); pintarLectura(); ir('lectura');
+    /* las cartas quedan centradas en la pantalla, con sus posiciones y nombres a la vista */
+    setTimeout(() => { const r = $('#ranuras'); if (r) r.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 120);
+  });
 
   /* ---------- lectura ---------- */
   const cartasDeLectura = () => estado.elegidas.map((k) => estado.orden[k]);
