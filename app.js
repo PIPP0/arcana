@@ -143,133 +143,40 @@
   }
 
   /* ---------- sonido (apagado por defecto) ----------
-     Todo se sintetiza en el navegador (sin archivos): campanas y cuencos en escala pentatónica con
-     reverberación, roces de papel para las cartas y un fondo muy suave. Cada interacción tiene su sonido. */
+     Cinco estilos (sonido.js). La persona elige el suyo con la flecha junto a «Sonido». */
   let sonido = false;
-  const sfx = (() => {
-    let ctx = null, seco = null, mojado = null, pad = null;
-    const NOTA = { la3: 220, mi4: 329.63, la4: 440, do5: 523.25, re5: 587.33, mi5: 659.25, sol5: 783.99, la5: 880, do6: 1046.5, mi6: 1318.5 };
-    const azar = (a, b) => a + Math.random() * (b - a);
-    function iniciar() {
-      if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return ctx; }
-      ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -20; comp.ratio.value = 4; comp.connect(ctx.destination);
-      seco = ctx.createGain(); seco.connect(comp);
-      const L = Math.floor(ctx.sampleRate * 3), ir = ctx.createBuffer(2, L, ctx.sampleRate);
-      for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < L; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / L, 2.8); }
-      const rev = ctx.createConvolver(); rev.buffer = ir; mojado = ctx.createGain(); mojado.gain.value = 0.7; mojado.connect(rev); rev.connect(comp);
-      return ctx;
-    }
-    /* campana o cuenco: parciales sinusoidales con caída suave y un poco de eco */
-    function voz(freq, t, dur, vol, parciales, ataque = 0.008, eco = 0.7) {
-      parciales.forEach(([r, g, dec]) => {
-        const o = ctx.createOscillator(), a = ctx.createGain(), e = ctx.createGain();
-        o.type = 'sine'; o.frequency.value = freq * r;
-        const d = Math.max(0.15, dur * (dec || 1));
-        a.gain.setValueAtTime(0.0001, t); a.gain.linearRampToValueAtTime(vol * g, t + ataque); a.gain.exponentialRampToValueAtTime(0.0001, t + d);
-        e.gain.value = eco; o.connect(a); a.connect(seco); a.connect(e); e.connect(mojado);
-        o.start(t); o.stop(t + d + 0.05);
-      });
-    }
-    const CAMPANA = [[1, 1, 1], [2.76, 0.32, 0.55], [5.4, 0.12, 0.3], [8.9, 0.05, 0.18]];
-    const CUENCO = [[1, 1, 1], [2.01, 0.5, 0.8], [3.0, 0.22, 0.6], [4.2, 0.1, 0.4]];
-    const CRISTAL = [[1, 1, 0.7], [2, 0.22, 0.35]];
-    /* roce de papel: ruido filtrado con barrido de frecuencia */
-    function roce(t, dur, f0, f1, vol, q = 0.9, eco = 0.15) {
-      const n = Math.floor(ctx.sampleRate * dur), b = ctx.createBuffer(1, n, ctx.sampleRate), d = b.getChannelData(0);
-      for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 1.6);
-      const s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain(), e = ctx.createGain();
-      f.type = 'bandpass'; f.Q.value = q; f.frequency.setValueAtTime(f0, t); f.frequency.exponentialRampToValueAtTime(Math.max(60, f1), t + dur);
-      g.gain.value = vol; e.gain.value = eco; s.buffer = b; s.connect(f); f.connect(g); g.connect(seco); g.connect(e); e.connect(mojado);
-      s.start(t);
-    }
-    const listo = () => { if (!sonido) return false; try { iniciar(); return true; } catch (e) { return false; } };
-    const seguro = (fn) => () => { if (!listo()) return; try { fn(ctx.currentTime + 0.01); } catch (e) { /* sin audio: la lectura sigue igual */ } };
-
-    function ambiente(enc) {
-      if (!ctx) return;
-      const t = ctx.currentTime;
-      if (enc) {
-        if (pad) return;
-        const g = ctx.createGain(), f = ctx.createBiquadFilter(), lfo = ctx.createOscillator(), lg = ctx.createGain();
-        f.type = 'lowpass'; f.frequency.value = 520; lfo.frequency.value = 0.06; lg.gain.value = 180; lfo.connect(lg); lg.connect(f.frequency);
-        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.05, t + 4);
-        const osc = [[110, 'sine', 1], [164.81, 'sine', 0.55], [220.4, 'triangle', 0.3], [329.7, 'sine', 0.16]].map(([fr, ty, v]) => {
-          const o = ctx.createOscillator(), og = ctx.createGain(); o.type = ty; o.frequency.value = fr; og.gain.value = v; o.connect(og); og.connect(f); o.start(t); return o;
-        });
-        f.connect(g); g.connect(seco); g.connect(mojado); lfo.start(t);
-        pad = { g, osc: osc.concat(lfo) };
-      } else if (pad) {
-        const p = pad; pad = null;
-        p.g.gain.cancelScheduledValues(t); p.g.gain.setValueAtTime(Math.max(0.0001, p.g.gain.value), t); p.g.gain.exponentialRampToValueAtTime(0.0001, t + 0.8);
-        setTimeout(() => p.osc.forEach((o) => { try { o.stop(); } catch (e) { /* ya parado */ } }), 1000);
-      }
-    }
-    document.addEventListener('visibilitychange', () => { if (ctx) { if (document.hidden) ctx.suspend(); else if (sonido) ctx.resume(); } });
-
-    return {
-      /* al activar el sonido: tres notas ascendentes y empieza el fondo */
-      encender: seguro((t) => { [NOTA.la4, NOTA.mi5, NOTA.la5].forEach((f, i) => voz(f, t + i * 0.16, 2.4, 0.07, CAMPANA)); }),
-      apagar() { ambiente(false); },
-      /* un toque suave: temas, opciones */
-      tick: seguro((t) => { voz(NOTA.mi6, t, 0.5, 0.045, CRISTAL, 0.004, 0.5); roce(t, 0.05, 3200, 1800, 0.02); }),
-      /* elegir mazo: se abre la caja, roce largo de cartas y un cuenco grave */
-      mazo: seguro((t) => { roce(t, 0.32, 1200, 3200, 0.05, 0.6); roce(t + 0.12, 0.2, 2600, 900, 0.035); voz(NOTA.la3, t + 0.05, 2.6, 0.09, CUENCO); }),
-      tirada: seguro((t) => { voz(NOTA.re5, t, 1.4, 0.06, CAMPANA); roce(t, 0.08, 2400, 1400, 0.025); }),
-      /* barajar: aleteo de cartas que se acelera y se apaga, como el movimiento de la pila (≈1,2 s) */
-      barajar: seguro((t) => {
-        roce(t, 1.0, 260, 900, 0.03, 0.5, 0.3);
-        for (let i = 0; i < 18; i++) {
-          const dt = i * 0.052 + azar(0, 0.014);
-          roce(t + dt, azar(0.03, 0.055), azar(2200, 4200), azar(1200, 2000), 0.055 * (1 - i * 0.025), 1.2, 0.1);
-        }
-        voz(NOTA.la3 / 2, t + 0.95, 1.2, 0.05, CUENCO, 0.05);
-      }),
-      /* repartir: las cartas se abren en abanico con un barrido y un destello */
-      repartir: seguro((t) => {
-        for (let i = 0; i < 12; i++) roce(t + i * 0.035, 0.05, 1800 + i * 260, 3600 + i * 200, 0.04, 1.1, 0.2);
-        roce(t, 0.5, 500, 5200, 0.035, 0.5, 0.35);
-        voz(NOTA.mi6, t + 0.38, 1.8, 0.04, CAMPANA); voz(NOTA.sol5, t + 0.46, 1.8, 0.04, CAMPANA);
-      }),
-      /* elegir una carta: nota que sube con cada carta (1.ª, 2.ª, 3.ª) */
-      elegir(n) { const nota = [NOTA.mi5, NOTA.sol5, NOTA.la5][Math.min(n, 2)]; seguro((t) => { roce(t, 0.06, 2800, 1600, 0.03); voz(nota, t, 1.6, 0.075, CAMPANA); })(); },
-      soltar: seguro((t) => { voz(NOTA.re5, t, 0.5, 0.04, CRISTAL, 0.006, 0.3); }),
-      /* confirmar: cuenco tibetano largo con su quinta */
-      confirmar: seguro((t) => { voz(NOTA.la3, t, 4.2, 0.13, CUENCO, 0.02); voz(NOTA.mi4, t + 0.14, 3.6, 0.08, CUENCO, 0.02); roce(t, 0.5, 400, 2400, 0.02, 0.5, 0.4); }),
-      /* dar vuelta una carta: giro de papel y, a mitad del giro, la campana de su posición.
-         La última carta cierra con un acorde abierto. */
-      revelar(i, ultima) {
-        const nota = [NOTA.la4, NOTA.re5, NOTA.sol5][i % 3];
-        seguro((t) => {
-          roce(t, 0.26, 600, 4200, 0.07, 0.7, 0.2);
-          voz(nota, t + 0.4, 2.6, 0.09, CAMPANA, 0.006);
-          voz(nota * 4, t + 0.42, 1.2, 0.025, CRISTAL, 0.004, 0.9);
-        })();
-      },
-      /* entrega de la lectura: marea que sube, bajo profundo, cascada de campanas y un acorde que se asienta */
-      entrega(suave) {
-        seguro((t) => {
-          const v = suave ? 0.6 : 1;
-          roce(t, 1.5, 180, 6500, 0.05 * v, 0.4, 0.55);
-          voz(NOTA.la3 / 2, t + 0.1, 7.5, 0.12 * v, CUENCO, 0.6);
-          voz(NOTA.la3, t + 0.35, 6.5, 0.09 * v, CUENCO, 0.7);
-          [NOTA.la4, NOTA.do5, NOTA.re5, NOTA.mi5, NOTA.sol5, NOTA.la5, NOTA.do6, NOTA.mi6].forEach((f, i) => voz(f, t + 1.0 + i * 0.11, 3.4, 0.05 * v, CAMPANA, 0.006, 0.9));
-          voz(NOTA.la4, t + 2.1, 5.5, 0.06 * v, CAMPANA, 0.01, 0.9); voz(NOTA.mi5, t + 2.15, 5.5, 0.045 * v, CAMPANA, 0.01, 0.9); voz(NOTA.do6, t + 2.2, 5.5, 0.04 * v, CAMPANA, 0.01, 0.9);
-          voz(NOTA.mi6 * 2, t + 2.35, 3.2, 0.02 * v, CRISTAL, 0.004, 1);
-        })();
-      },
-      /* algo bloqueado: un «toc» grave y amable, sin castigar */
-      negado: seguro((t) => { voz(196, t, 0.35, 0.07, [[1, 1, 1], [1.5, 0.3, 0.6]], 0.004, 0.25); }),
-      guardar: seguro((t) => { voz(NOTA.mi5, t, 1.4, 0.06, CAMPANA); voz(NOTA.la5, t + 0.13, 2.0, 0.06, CAMPANA); }),
-      paso: seguro((t) => { roce(t, 0.2, 500, 1800, 0.02, 0.6, 0.25); })
-    };
-  })();
-  $('#btnSonido').addEventListener('click', (e) => {
+  const S = window.ArcanaSonido;
+  const dice = (acc) => { if (sonido && S) S.sonar(acc); };
+  const sfx = {
+    encender: () => dice('encender'), apagar() {}, tick: () => dice('tema'), mazo: () => dice('mazo'), tirada: () => dice('tirada'),
+    barajar: () => dice('barajar'), repartir: () => dice('repartir'), elegir: (n) => dice('elegir' + (Math.min(n, 2) + 1)), soltar: () => dice('soltar'),
+    confirmar: () => dice('confirmar'), revelar: (i) => dice('revelar' + ((i % 3) + 1)), entrega: (suave) => dice(suave ? 'entregaSuave' : 'entrega'),
+    negado: () => dice('negado'), guardar: () => dice('guardar')
+  };
+  document.addEventListener('visibilitychange', () => { if (!S) return; if (document.hidden) S.suspender(); else if (sonido) S.reanudar(); });
+  const btnSon = $('#btnSonido'), btnEst = $('#btnEstilo'), menuSon = $('#menuSonido');
+  function pintarMenuSonido() {
+    if (!S || !menuSon) return;
+    menuSon.innerHTML = S.estilos.map((e) => `<button type="button" role="menuitemradio" aria-checked="${e.id === S.actual()}" data-estilo="${e.id}"><b>${e.id}. ${e.nombre}</b><span>${e.desc}</span></button>`).join('');
+  }
+  function cerrarMenuSonido() { if (menuSon) menuSon.hidden = true; if (btnEst) btnEst.setAttribute('aria-expanded', 'false'); }
+  btnSon.addEventListener('click', (e) => {
     sonido = !sonido;
     e.currentTarget.setAttribute('aria-pressed', String(sonido));
     e.currentTarget.textContent = sonido ? 'Sonido: sí' : 'Sonido: no';
-    if (sonido) sfx.encender(); else sfx.apagar();
+    if (btnEst) btnEst.hidden = !sonido || !S;
+    if (!sonido) cerrarMenuSonido(); else sfx.encender();
   });
+  if (btnEst) btnEst.addEventListener('click', () => {
+    pintarMenuSonido(); const abrir = menuSon.hidden; menuSon.hidden = !abrir; btnEst.setAttribute('aria-expanded', String(abrir));
+    if (abrir) { const sel = menuSon.querySelector('[aria-checked="true"]'); if (sel) sel.focus(); }
+  });
+  if (menuSon) menuSon.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-estilo]'); if (!b) return;
+    S.poner(Number(b.dataset.estilo)); pintarMenuSonido(); sfx.encender(); cerrarMenuSonido(); btnEst.focus();
+  });
+  document.addEventListener('click', (e) => { if (menuSon && !menuSon.hidden && !e.target.closest('.sonido-caja')) cerrarMenuSonido(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && menuSon && !menuSon.hidden) { cerrarMenuSonido(); btnEst.focus(); } });
 
   /* ---------- navegación ---------- */
   const CON_TEMA = ['intencion', 'tirada', 'barajar', 'elegir', 'lectura'];
@@ -277,6 +184,7 @@
     if (id === 'tirada') estado.pregunta = $('#pregunta').value.trim();
     if (id === 'barajar') prepararBarajar();
     if (id === 'espacio') pintarHistorial();
+    if (id === 'perfil') pintarCuenta();
     if (id === 'intencion') pintarTemas();
     if (id === 'mazo' || id === 'tirada') pintarCupo();
     if (id === 'tirada') pintarTiradas();
@@ -764,20 +672,55 @@
     const P = permisos(), t = tiradasPermitidas().length, m = MAZOS.filter((x) => !x.pendiente && ((P.mazos || {})[x.id] !== false)).length;
     return `${t} ${t === 1 ? 'tirada' : 'tiradas'}, ${m} ${m === 1 ? 'mazo' : 'mazos'}, ${typeof P.lecturasDia === 'number' ? P.lecturasDia + (P.lecturasDia === 1 ? ' lectura al día' : ' lecturas al día') : 'lecturas sin límite'}${P.diario === false ? '' : typeof P.guardadas === 'number' ? ', hasta ' + P.guardadas + (P.guardadas === 1 ? ' guardada' : ' guardadas') : ', diario sin límite'}`;
   }
-  function pintarCuenta() {
-    const caja = $('#cuentaEstado'); if (!caja) return;
-    const u = window.Nube.usuario(), foco = document.activeElement;
-    if (!u && foco && caja.contains(foco) && foco.tagName === 'INPUT') return; // no borrar lo que la persona está escribiendo
-    if (u) {
-      const p = window.Nube.perfil();
-      caja.innerHTML = `<p>Sesión iniciada como <b>${esc(u.email)}</b>. Tu carta del día se mantiene volteada al actualizar. Tus lecturas y notas siguen guardadas solo en este dispositivo.</p>
-         <p>Tu perfil: <b>${NOMBRE_PERFIL[p]}</b> · ${resumenPerfil()}.</p>
-         <div class="acciones"><button type="button" class="btn chico" id="btnSalir">Salir</button><button type="button" class="btn chico" id="btnBorrarFicha">Borrar mi ficha</button></div>`;
-      return;
-    }
+
+  /* ---------- avatares: cinco arcanos, dibujados en oro sobre la noche ---------- */
+  const AVATARES = [['sol', 'El Sol', 'Alegría y claridad'], ['luna', 'La Luna', 'Intuición y sueños'], ['estrella', 'La Estrella', 'Esperanza y guía'], ['sacerdotisa', 'La Sacerdotisa', 'Misterio y sabiduría'], ['mago', 'El Mago', 'Voluntad y creación']];
+  const star4 = (x, y, r) => `<path d="M${x} ${y - r}Q${x} ${y} ${x + r} ${y}Q${x} ${y} ${x} ${y + r}Q${x} ${y} ${x - r} ${y}Q${x} ${y} ${x} ${y - r}Z"/>`;
+  const FIGURA = {
+    sol: () => {
+      let r = '';
+      for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6, r2 = i % 2 ? 29 : 35; r += `<line x1="${(50 + Math.cos(a) * 21).toFixed(1)}" y1="${(50 + Math.sin(a) * 21).toFixed(1)}" x2="${(50 + Math.cos(a) * r2).toFixed(1)}" y2="${(50 + Math.sin(a) * r2).toFixed(1)}"/>`; }
+      return `<g stroke="G" stroke-width="2.2" stroke-linecap="round">${r}</g><circle cx="50" cy="50" r="14" fill="G"/><circle cx="50" cy="50" r="18" fill="none" stroke="G" stroke-width=".8"/>`;
+    },
+    luna: () => `<path d="M60 22A29 29 0 1 0 60 78A34 34 0 0 1 60 22Z" fill="G"/><g fill="G">${star4(73, 32, 5)}${star4(79, 53, 3.2)}${star4(70, 71, 4)}</g>`,
+    estrella: () => {
+      let p = '';
+      for (let i = 0; i < 16; i++) { const a = -Math.PI / 2 + i * Math.PI / 8, r = i % 2 ? 12 : 30; p += `${(50 + Math.cos(a) * r).toFixed(1)},${(44 + Math.sin(a) * r).toFixed(1)} `; }
+      return `<polygon points="${p.trim()}" fill="G"/><circle cx="50" cy="44" r="4" fill="#0a0f2e"/><g fill="G">${star4(22, 24, 4)}${star4(80, 30, 3)}${star4(76, 62, 3.4)}</g>`
+        + `<path d="M24 79q6-5 12 0t12 0t12 0t12 0" fill="none" stroke="G" stroke-width="1.6" stroke-linecap="round"/><path d="M30 86q5-4 10 0t10 0t10 0t10 0" fill="none" stroke="G" stroke-width="1.2" stroke-linecap="round" opacity=".6"/>`;
+    },
+    sacerdotisa: () => `<g fill="none" stroke="G" stroke-width="1.6"><rect x="19" y="30" width="8" height="46" fill="#0a0f2e"/><rect x="73" y="30" width="8" height="46" fill="G" fill-opacity=".85"/><path d="M17 30h12M71 30h12M16 76h14M70 76h14"/><path d="M27 31Q50 8 73 31"/></g>`
+      + `<g fill="G"><path d="M41 33A9 9 0 1 0 41 49A10 10 0 0 1 41 33Z"/><circle cx="50" cy="41" r="6"/><path d="M59 33A9 9 0 1 1 59 49A10 10 0 0 0 59 33Z"/></g>`
+      + `<rect x="40" y="56" width="20" height="13" rx="2" fill="none" stroke="G" stroke-width="1.4"/><path d="M44 61h12M44 65h8" stroke="G" stroke-width="1"/>`,
+    mago: () => `<path d="M31 30C31 20 45 20 50 30C55 40 69 40 69 30C69 20 55 20 50 30C45 40 31 40 31 30Z" fill="none" stroke="G" stroke-width="2.4"/>`
+      + `<line x1="50" y1="48" x2="50" y2="67" stroke="G" stroke-width="2.8" stroke-linecap="round"/><circle cx="50" cy="45.5" r="2.6" fill="G"/>`
+      + `<line x1="22" y1="73" x2="78" y2="73" stroke="G" stroke-width="2" stroke-linecap="round"/><line x1="29" y1="73" x2="29" y2="82" stroke="G" stroke-width="1.6"/><line x1="71" y1="73" x2="71" y2="82" stroke="G" stroke-width="1.6"/>`
+      + `<path d="M27 62h10l-1.8 7h-6.4z" fill="G"/><circle cx="43" cy="66" r="3.6" fill="none" stroke="G" stroke-width="1.5"/>`
+      + `<g stroke="G" stroke-width="1.6" stroke-linecap="round"><line x1="58" y1="60" x2="58" y2="70"/><line x1="55" y1="64" x2="61" y2="64"/><line x1="71" y1="59" x2="71" y2="70" stroke-width="2.4"/></g>`
+      + `<g fill="G">${star4(22, 48, 3)}${star4(78, 50, 3)}</g>`
+  };
+  let avN = 0;
+  function avatarSvg(id) {
+    const g = `av${++avN}${id}`, G = `url(#${g}o)`, fig = (FIGURA[id] ? FIGURA[id]() : '').replace(/="G"/g, `="${G}"`);
+    return `<svg viewBox="0 0 100 100" aria-hidden="true" focusable="false"><defs><radialGradient id="${g}f" cx="50%" cy="35%" r="80%"><stop offset="0" stop-color="#22327f"/><stop offset="1" stop-color="#060a22"/></radialGradient><linearGradient id="${g}o" x1="0" y1="10" x2="0" y2="90" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#f6e4b4"/><stop offset="1" stop-color="#c8963f"/></linearGradient></defs><circle cx="50" cy="50" r="48" fill="url(#${g}f)" stroke="${G}" stroke-width="2"/><circle cx="50" cy="50" r="43.5" fill="none" stroke="#e2c17c" stroke-opacity=".4" stroke-width=".7" stroke-dasharray="1 2.4"/>${fig}</svg>`;
+  }
+  const avatarLocal = (uid) => { try { return localStorage.getItem('arcana.avatar.' + uid) || ''; } catch (e) { return ''; } };
+  function avatarDe(u) { const f = window.Nube.ficha() || {}, id = f.avatar || avatarLocal(u.uid); return AVATARES.some((a) => a[0] === id) ? id : ''; }
+  const nombreDe = (u) => { const f = window.Nube.ficha() || {}; return (f.nombre || u.nombre || u.email.split('@')[0] || '').trim(); };
+  function avatarHtml(u) { const id = avatarDe(u); return id ? avatarSvg(id) : `<span class="inicial">${esc((nombreDe(u) || '?').charAt(0).toUpperCase())}</span>`; }
+  function ponerAvatar(id) {
+    const u = window.Nube.usuario(); if (!u) return;
+    try { if (id) localStorage.setItem('arcana.avatar.' + u.uid, id); else localStorage.removeItem('arcana.avatar.' + u.uid); } catch (e) { /* sigue igual */ }
+    pintarCuenta();
+    window.Nube.guardarFicha({ avatar: id || null }).catch(() => { /* queda guardado en este dispositivo */ });
+  }
+
+  /* ---------- perfil ---------- */
+  const fmtDesde = new Intl.DateTimeFormat('es-CL', { timeZone: 'America/Santiago', day: 'numeric', month: 'long', year: 'numeric' });
+  function loginHtml() {
     const crear = modoCuenta === 'crear';
-    caja.innerHTML = `<p>Entra para que tu carta del día se mantenga volteada al actualizar la página. Es opcional: tus lecturas y notas siguen guardándose solo en este dispositivo.</p>
-      <div class="acciones"><button type="button" class="btn primario chico" id="btnEntrar">Entrar con Google</button></div>
+    return `<p class="bajada">Entra para tener tu perfil, un avatar místico y tu carta del día fija al actualizar. Es opcional: puedes leer sin cuenta.</p>
+      <div class="cuenta"><div class="acciones"><button type="button" class="btn primario chico" id="btnEntrar">Entrar con Google</button></div>
       <p class="o">o con tu correo y contraseña</p>
       <form id="formCorreo" novalidate>
         ${crear ? '<label class="campo" for="cNombre">Tu nombre <span>(opcional)</span></label><input id="cNombre" type="text" maxlength="80" autocomplete="name">' : ''}
@@ -787,28 +730,71 @@
         <div class="acciones"><button type="submit" class="btn primario chico">${crear ? 'Crear mi cuenta' : 'Entrar'}</button>
           <button type="button" class="btn chico" id="btnModo">${crear ? 'Ya tengo cuenta' : 'Crear una cuenta'}</button>
           ${crear ? '' : '<button type="button" class="btn chico" id="btnOlvide">Olvidé mi contraseña</button>'}</div>
-      </form>`;
+      </form></div>`;
+  }
+  function perfilHtml(u) {
+    const f = window.Nube.ficha() || {}, p = window.Nube.perfil(), av = avatarDe(u), lect = leer().length, cupo = textoCupo();
+    return `<div class="perfil-cab"><span class="av-grande">${avatarHtml(u)}</span><div><h3>${esc(nombreDe(u))}</h3><p>${esc(u.email)}</p><span class="sello-p">${NOMBRE_PERFIL[p]}</span></div></div>
+      <section class="tarjeta-p"><h3>Tu avatar <span>(opcional)</span></h3><p>Elige un arcano que te represente. Solo se ve en tu cuenta.</p>
+        <div class="avatares" role="radiogroup" aria-label="Elige tu avatar">${AVATARES.map(([id, n, d]) => `<button type="button" class="av-op${av === id ? ' sel' : ''}" role="radio" aria-checked="${av === id}" data-avatar="${id}"><span class="av-img">${avatarSvg(id)}</span><b>${n}</b><small>${d}</small></button>`).join('')}</div>
+        <div class="acciones"><button type="button" class="btn chico" data-avatar="" ${av ? '' : 'disabled'}>Sin avatar</button></div></section>
+      <section class="tarjeta-p"><h3>Tus datos</h3>
+        <label class="campo" for="pNombre">Nombre</label>
+        <div class="fila-n"><input id="pNombre" type="text" maxlength="80" value="${esc(f.nombre || u.nombre || '')}" autocomplete="name"><button type="button" class="btn chico primario" id="btnGuardarNombre">Guardar</button></div>
+        <dl class="datos-p"><div><dt>Correo</dt><dd>${esc(u.email)}</dd></div><div><dt>Ingresas con</dt><dd>${u.proveedor === 'correo' ? 'Correo y contraseña' : 'Google'}</dd></div><div><dt>Miembro desde</dt><dd>${f.creado ? fmtDesde.format(f.creado) : '—'}</dd></div><div><dt>Accesos</dt><dd>${f.accesos || 0}</dd></div></dl></section>
+      <section class="tarjeta-p"><h3>Tu plan</h3><p><b>${NOMBRE_PERFIL[p]}</b> · ${resumenPerfil()}.</p><p>${cupo || 'Lecturas sin límite.'}</p>
+        ${p !== 'premium' ? '<div class="acciones"><button type="button" class="btn primario chico" data-planes="1">Descubre Premium →</button></div>' : ''}</section>
+      <section class="tarjeta-p"><h3>Tu espacio</h3><p>${lect ? `${lect} ${lect === 1 ? 'lectura guardada' : 'lecturas guardadas'} en este dispositivo.` : 'Todavía no guardas ninguna lectura en este dispositivo.'}</p>
+        <div class="acciones"><button type="button" class="btn chico" data-ir="espacio">Ir a Mi espacio</button></div></section>
+      <div class="acciones fin-p"><button type="button" class="btn" id="btnSalir">Salir de mi cuenta</button><button type="button" class="btn chico" id="btnBorrarFicha">Borrar mi ficha</button></div>`;
   }
   const cuentaCaja = $('#cuentaCaja');
+  function pintarCuenta() {
+    const u = window.Nube.usuario(), on = window.Nube.activa && window.Nube.funciones().cuentas !== false;
+    const chip = $('#btnPerfil');
+    if (chip) {
+      chip.hidden = !on; chip.classList.toggle('con-avatar', !!u);
+      chip.innerHTML = u ? `<span class="chip-av">${avatarHtml(u)}</span>` : 'Entrar';
+      chip.setAttribute('aria-label', u ? 'Mi perfil' : 'Entrar o crear cuenta');
+    }
+    const caja = $('#cuentaEstado');
+    if (caja) caja.innerHTML = u
+      ? `<p>Hola, <b>${esc(nombreDe(u))}</b>. Tu perfil, tu avatar y tu plan están en un solo lugar.</p><div class="acciones"><button type="button" class="btn chico" data-ir="perfil">Ver mi perfil</button></div>`
+      : `<p>Entra para tener tu perfil, un avatar y tu carta del día fija al actualizar. Es opcional.</p><div class="acciones"><button type="button" class="btn primario chico" data-ir="perfil">Entrar o crear cuenta</button></div>`;
+    const cont = $('#perfilCont'); if (!cont) return;
+    const foco = document.activeElement;
+    if (foco && cont.contains(foco) && foco.tagName === 'INPUT') return; // no borrar lo que la persona está escribiendo
+    cont.innerHTML = u ? perfilHtml(u) : loginHtml();
+  }
   const msgCuenta = (t, ok) => { const m = $('#cMsg'); if (m) { m.textContent = t; m.classList.toggle('ok', !!ok); } };
-  if (cuentaCaja) {
-    cuentaCaja.addEventListener('click', async (e) => {
+  const vPerfil = $('#v-perfil');
+  if (vPerfil) {
+    vPerfil.addEventListener('click', async (e) => {
+      const av = e.target.closest('[data-avatar]');
+      if (av) { ponerAvatar(av.dataset.avatar); sfx.tick(); aviso(av.dataset.avatar ? 'Avatar elegido.' : 'Avatar quitado.'); return; }
       const id = e.target.id;
       try {
         if (id === 'btnEntrar') { await window.Nube.entrar(); aviso('Sesión iniciada.'); }
-        else if (id === 'btnSalir') { await window.Nube.salir(); aviso('Saliste de tu cuenta.'); }
+        else if (id === 'btnSalir') { await window.Nube.salir(); ir('inicio'); aviso('Saliste de tu cuenta.'); }
         else if (id === 'btnModo') { modoCuenta = modoCuenta === 'crear' ? 'entrar' : 'crear'; if (document.activeElement) document.activeElement.blur(); pintarCuenta(); }
         else if (id === 'btnOlvide') {
           const c = ($('#cCorreo').value || '').trim();
           if (!c) { msgCuenta('Escribe tu correo arriba y vuelve a pulsar.'); return; }
           await window.Nube.recuperarClave(c); msgCuenta('Si ese correo tiene cuenta, te enviamos un enlace para cambiar la contraseña. Revisa también el spam.', true);
+        } else if (id === 'btnGuardarNombre') {
+          const n = ($('#pNombre').value || '').trim();
+          await window.Nube.guardarFicha({ nombre: n }); if (document.activeElement) document.activeElement.blur(); pintarCuenta(); aviso('Nombre guardado.');
         } else if (id === 'btnBorrarFicha') {
           if (e.target.dataset.seguro !== '1') { e.target.dataset.seguro = '1'; e.target.textContent = 'Toca de nuevo para borrar'; return; }
-          await window.Nube.borrarMiFicha(); await window.Nube.salir(); aviso('Tu ficha se borró.');
+          await window.Nube.borrarMiFicha(); await window.Nube.salir(); ir('inicio'); aviso('Tu ficha se borró.');
         }
-      } catch (err) { if (id === 'btnOlvide') msgCuenta(ERR_CUENTA[err && err.code] || 'No se pudo enviar. Intenta de nuevo.'); else aviso(ERR_CUENTA[err && err.code] || 'No se pudo completar. Intenta de nuevo.'); }
+      } catch (err) {
+        if (id === 'btnOlvide') msgCuenta(ERR_CUENTA[err && err.code] || 'No se pudo enviar. Intenta de nuevo.');
+        else if (id === 'btnGuardarNombre') aviso('No se pudo guardar el nombre. Intenta de nuevo.');
+        else aviso(ERR_CUENTA[err && err.code] || 'No se pudo completar. Intenta de nuevo.');
+      }
     });
-    cuentaCaja.addEventListener('submit', async (e) => {
+    vPerfil.addEventListener('submit', async (e) => {
       e.preventDefault();
       const correo = ($('#cCorreo').value || '').trim(), clave = $('#cClave').value || '', crear = modoCuenta === 'crear';
       if (!correo || !clave) { msgCuenta('Escribe tu correo y tu contraseña.'); return; }

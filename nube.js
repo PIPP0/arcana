@@ -33,7 +33,7 @@
   try { guardadoP = JSON.parse(localStorage.getItem(CACHE_P)); } catch (e) { /* sin almacenamiento */ }
   let PF = mezclar(PERF_DEF, guardadoP);
   let miPerfil = 'free';
-  let usuario = null;
+  let usuario = null, ficha = null;
   const oyentesF = [], oyentesU = [];
   const aleatorio = (n) => { const a = new Uint8Array(n); crypto.getRandomValues(a); return Array.from(a, (x) => 'abcdefghijklmnopqrstuvwxyz0123456789'[x % 36]).join(''); };
   const hoyChile = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Santiago' }).format(new Date());
@@ -128,7 +128,8 @@
   async function vigilarSesion() {
     const c = await conectar(); if (!c) return;
     c.au.onAuthStateChanged(c.auth, (u) => {
-      usuario = u && !u.isAnonymous && u.email ? { uid: u.uid, nombre: u.displayName || '', email: u.email } : null;
+      usuario = u && !u.isAnonymous && u.email ? { uid: u.uid, nombre: u.displayName || '', email: u.email, proveedor: (u.providerData && u.providerData[0] && u.providerData[0].providerId === 'password') ? 'correo' : 'google' } : null;
+      if (!usuario) ficha = null;
       avisarU();
       if (usuario) { tocarPersona(u, c, false); leerPerfil(u, c); } else if (miPerfil !== 'free') { miPerfil = 'free'; avisarF(); }
     });
@@ -137,6 +138,7 @@
     try {
       const s = await c.fs.getDoc(c.fs.doc(c.db, 'personas', u.uid));
       const p = s.exists() && PERFILES.includes(s.data().perfil) ? s.data().perfil : 'free';
+      if (s.exists()) { const d = s.data(); ficha = { nombre: d.nombre || '', avatar: d.avatar || null, accesos: d.accesos || 0, creado: d.creado && d.creado.toDate ? d.creado.toDate() : null }; avisarU(); }
       if (p !== miPerfil) { miPerfil = p; avisarF(); }
     } catch (e) { /* sin ficha o sin red: se queda en Free */ }
   }
@@ -145,6 +147,7 @@
     activa: !!cfg,
     funciones: () => F,
     usuario: () => usuario,
+    ficha: () => ficha,
     perfil: () => (cfg ? miPerfil : 'premium'),
     todosPerfiles: () => PF,
     /* Lo que el perfil de esta persona incluye. Sin nube conectada (desarrollo local) se ve todo. */
@@ -185,6 +188,15 @@
     async recuperarClave(correo) {
       const c = await conectar(); if (!c) throw new Error('sin-nube');
       await c.au.sendPasswordResetEmail(c.auth, correo);
+    },
+    async guardarFicha(cambios) {
+      const c = await conectar(); const u = c && c.auth.currentUser; if (!u || u.isAnonymous) throw new Error('sin-sesion');
+      const datos = {};
+      if ('nombre' in cambios) datos.nombre = String(cambios.nombre || '').slice(0, 80);
+      if ('avatar' in cambios) datos.avatar = cambios.avatar ? cambios.avatar : c.fs.deleteField();
+      await c.fs.updateDoc(c.fs.doc(c.db, 'personas', u.uid), datos);
+      ficha = Object.assign({}, ficha || {}, 'nombre' in cambios ? { nombre: datos.nombre } : {}, 'avatar' in cambios ? { avatar: cambios.avatar || null } : {});
+      avisarU();
     },
     async salir() { const c = await conectar(); if (c) await c.au.signOut(c.auth); },
     async borrarMiFicha() {

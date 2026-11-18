@@ -99,9 +99,15 @@ service cloud.firestore {
       allow update: if esAdmin()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['perfil'])
         && request.resource.data.perfil in ['free', 'full', 'premium'];
+      // Su propio nombre y avatar (un avatar entre cinco, o ninguno).
       allow update: if signedIn() && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(['nombre', 'email', 'creado', 'ultimoAcceso', 'accesos', 'perfil'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nombre', 'avatar'])
+        && (!('nombre' in request.resource.data) || (request.resource.data.nombre is string && request.resource.data.nombre.size() <= 80))
+        && (!('avatar' in request.resource.data) || request.resource.data.avatar in ['sol', 'luna', 'estrella', 'sacerdotisa', 'mago']);
+      allow update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['nombre', 'email', 'creado', 'ultimoAcceso', 'accesos', 'perfil', 'avatar'])
         && request.resource.data.get('perfil', null) == resource.data.get('perfil', null)
+        && request.resource.data.get('avatar', null) == resource.data.get('avatar', null)
         && request.resource.data.email == resource.data.email
         && request.resource.data.creado == resource.data.creado
         && request.resource.data.ultimoAcceso == request.time

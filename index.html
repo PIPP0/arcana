@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,500;1,6..96,400&family=Jost:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=22">
+<link rel="stylesheet" href="styles.css?v=24">
 </head>
 <body>
 <a class="salto" href="#contenido">Saltar al contenido</a>
@@ -20,7 +20,12 @@
   <nav aria-label="Principal">
     <button type="button" class="enlace" data-ir="espacio">Mi espacio</button>
     <button type="button" class="btn primario chico cta-barra" data-ir="mazo">Comenzar</button>
-    <button type="button" class="enlace" id="btnSonido" aria-pressed="false">Sonido: no</button>
+    <span class="sonido-caja">
+      <button type="button" class="enlace" id="btnSonido" aria-pressed="false">Sonido: no</button>
+      <button type="button" class="enlace" id="btnEstilo" aria-haspopup="true" aria-expanded="false" aria-controls="menuSonido" aria-label="Estilo de sonido" hidden>▾</button>
+      <div class="menu-sonido" id="menuSonido" role="menu" aria-label="Estilo de sonido" hidden></div>
+    </span>
+    <button type="button" class="enlace btn-perfil" id="btnPerfil" data-ir="perfil" hidden>Entrar</button>
   </nav>
 </header>
 
@@ -197,6 +202,13 @@
     <div class="interpretacion" id="interpretacion" hidden></div>
   </section>
 
+  <!-- MI PERFIL -->
+  <section class="vista estrecha" id="v-perfil" hidden>
+    <div class="cabecera"><button type="button" class="volver" data-ir="inicio">← Volver</button></div>
+    <h2 tabindex="-1">Mi perfil</h2>
+    <div id="perfilCont"></div>
+  </section>
+
   <!-- MI ESPACIO -->
   <section class="vista estrecha" id="v-espacio" hidden>
     <div class="cabecera"><button type="button" class="volver" data-ir="inicio">← Volver</button></div>
@@ -222,9 +234,10 @@
 <div class="aviso" id="aviso" role="status" aria-live="polite"></div>
 
 <script src="nube-config.js?v=16"></script>
-<script src="nube.js?v=18"></script>
+<script src="nube.js?v=19"></script>
 <script src="cards.js?v=15"></script>
 <script src="menores.js?v=15"></script>
-<script src="app.js?v=28"></script>
+<script src="sonido.js?v=1"></script>
+<script src="app.js?v=29"></script>
 </body>
 </html>
