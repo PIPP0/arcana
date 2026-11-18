@@ -138,7 +138,7 @@
     try {
       const s = await c.fs.getDoc(c.fs.doc(c.db, 'personas', u.uid));
       const p = s.exists() && PERFILES.includes(s.data().perfil) ? s.data().perfil : 'free';
-      if (s.exists()) { const d = s.data(); ficha = { nombre: d.nombre || '', avatar: d.avatar || null, accesos: d.accesos || 0, creado: d.creado && d.creado.toDate ? d.creado.toDate() : null }; avisarU(); }
+      if (s.exists()) { const d = s.data(); ficha = { nombre: d.nombre || '', avatar: d.avatar || null, hoy: d.hoy && typeof d.hoy === 'object' ? d.hoy : null, accesos: d.accesos || 0, creado: d.creado && d.creado.toDate ? d.creado.toDate() : null }; avisarU(); }
       if (p !== miPerfil) { miPerfil = p; avisarF(); }
     } catch (e) { /* sin ficha o sin red: se queda en Free */ }
   }
@@ -194,8 +194,9 @@
       const datos = {};
       if ('nombre' in cambios) datos.nombre = String(cambios.nombre || '').slice(0, 80);
       if ('avatar' in cambios) datos.avatar = cambios.avatar ? cambios.avatar : c.fs.deleteField();
+      if ('hoy' in cambios && cambios.hoy) datos.hoy = { dia: String(cambios.hoy.dia), carta: Number(cambios.hoy.carta) };
       await c.fs.updateDoc(c.fs.doc(c.db, 'personas', u.uid), datos);
-      ficha = Object.assign({}, ficha || {}, 'nombre' in cambios ? { nombre: datos.nombre } : {}, 'avatar' in cambios ? { avatar: cambios.avatar || null } : {});
+      ficha = Object.assign({}, ficha || {}, 'nombre' in cambios ? { nombre: datos.nombre } : {}, 'avatar' in cambios ? { avatar: cambios.avatar || null } : {}, 'hoy' in cambios && cambios.hoy ? { hoy: datos.hoy } : {});
       avisarU();
     },
     async salir() { const c = await conectar(); if (c) await c.au.signOut(c.auth); },

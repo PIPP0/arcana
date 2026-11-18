@@ -327,27 +327,42 @@
   const pintarDesfile = () => { const D = DESFILE.filter(([m]) => mazoVisible(m)); $('#desfile').innerHTML = D.concat(D).map(([m, i]) => `<img src="${src(m, i)}" alt="" loading="lazy" decoding="async">`).join(''); };
   pintarDesfile();
 
-  /* carta del día: la misma durante todo el día, en este dispositivo */
+  /* carta del día: la misma durante todo el día.
+     Sin sesión se reconoce por el navegador; con sesión queda guardada en la cuenta, así que es la misma en cualquier dispositivo.
+     Un interruptor permite ocultarla y volver a verla cuando quieras. */
   (function () {
     const hoy = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Santiago' }).format(new Date());
+    const KH = 'arcana.hoy.v1';
     let g = null;
-    try { g = JSON.parse(localStorage.getItem('arcana.hoy.v1')); } catch (e) { /* sin almacenamiento */ }
+    try { g = JSON.parse(localStorage.getItem(KH)); } catch (e) { /* sin almacenamiento */ }
     if (!g || g.dia !== hoy || !CARTAS[g.carta]) {
       const b = new Uint32Array(1); crypto.getRandomValues(b);
       g = { dia: hoy, carta: b[0] % TOTAL, vista: false };
-      try { localStorage.setItem('arcana.hoy.v1', JSON.stringify(g)); } catch (e) { /* sigue igual */ }
     }
-    const k = CARTAS[g.carta], btn = $('#hoyGiro');
-    btn.innerHTML = `<span class="dentro"><span class="lado carta c-rws">${reverso('rws')}</span><span class="lado frente carta c-rws">${cara(g.carta, 'rws', false)}</span></span>`;
+    const guardarG = () => { try { localStorage.setItem(KH, JSON.stringify(g)); } catch (e) { /* sigue igual */ } };
+    guardarG();
+    let k = CARTAS[g.carta];
+    const btn = $('#hoyGiro'), txt = $('#hoyTexto');
+    const visible = () => btn.classList.contains('vista-carta');
+    function caras() {
+      k = CARTAS[g.carta];
+      btn.innerHTML = `<span class="dentro"><span class="lado carta c-rws">${reverso('rws')}</span><span class="lado frente carta c-rws">${cara(g.carta, 'rws', false)}</span></span>`;
+    }
+    caras();
+    const interruptor = (on) => `<label class="sw"><input type="checkbox" id="hoySw" role="switch" ${on ? 'checked' : ''}><span class="sw-pista" aria-hidden="true"></span><span class="sw-txt">Mostrar mi carta</span></label>`;
+    function pintarEspera() {
+      btn.classList.remove('vista-carta'); btn.setAttribute('aria-label', 'Dar vuelta mi carta de hoy');
+      txt.innerHTML = `<p class="hoy-espera">Está boca abajo, esperándote.</p>${interruptor(false)}`;
+    }
     function mostrar() {
-      anotarDia(hoy, g.carta); // toda carta visible queda anotada en el calendario, también al restaurarla con la sesión
+      anotarDia(hoy, g.carta); // toda carta visible queda anotada en el calendario
       btn.classList.add('vista-carta');
       btn.setAttribute('aria-label', `Tu carta de hoy: ${k.nombre}. Ampliar`);
       const lente = [
         `Hoy te acompaña ${k.hilo}. Fíjate dónde aparece: en una conversación, en una decisión pequeña, en cómo te tratas a ti.`,
         `Si tuvieras que ponerle nombre a tu día, esta carta sugiere ${k.hilo}. Mira dónde se asoma, aunque sea en algo pequeño.`,
         `Lleva ${k.hilo} como una lente: ¿cómo se ve tu jornada desde ahí?`][g.carta % 3];
-      $('#hoyTexto').innerHTML = `<p class="pos">Tu carta de hoy</p><h3>${k.nombre}</h3><p class="claves">${k.claves}</p>
+      txt.innerHTML = `<div class="hoy-cab"><p class="pos">Tu carta de hoy</p>${interruptor(true)}</div><h3>${k.nombre}</h3><p class="claves">${k.claves}</p>
         <p class="mensaje">${k.esencia}</p>
         <div class="hoy-bloques">
           <div><b>Para tu día</b><p>${lente} ${k.luz}</p></div>
@@ -356,18 +371,33 @@
         </div>
         <div class="acciones"><button type="button" class="btn primario" data-ir="mazo">Profundizar con tres cartas</button></div>`;
     }
-    if (g.vista && window.Nube.usuario()) anotarDia(hoy, g.carta);
-    btn.addEventListener('click', () => {
-      if (btn.classList.contains('vista-carta')) { ampliar(g.carta, 'rws'); return; }
-      sfx.revelar(1); setTimeout(() => sfx.entrega(true), 650); mostrar(); window.Nube.cartaHoy();
-      anotarDia(hoy, g.carta);
+    function guardarVista(v) { g.vista = v; guardarG(); }
+    function revelar() {
+      sfx.revelar(1); setTimeout(() => sfx.entrega(true), 650);
+      mostrar(); window.Nube.cartaHoy();
       if (window.Nube.usuario()) guardarVista(true);
-    });
-    function guardarVista(v) { g.vista = v; try { localStorage.setItem('arcana.hoy.v1', JSON.stringify(g)); } catch (e) { /* sigue igual */ } }
+    }
+    function ocultar() { pintarEspera(); if (window.Nube.usuario()) guardarVista(false); }
+    /* la cuenta manda: si ya tiene carta para hoy, esa es la de todos sus dispositivos */
+    function cambiarCarta(id) {
+      const estaba = visible(); g.carta = id; guardarG(); caras();
+      if (estaba) mostrar(); else pintarEspera();
+    }
+
+    if (g.vista && window.Nube.usuario()) mostrar(); else pintarEspera();
+    btn.addEventListener('click', () => { if (visible()) ampliar(g.carta, 'rws'); else revelar(); });
+    txt.addEventListener('change', (e) => { if (e.target.id !== 'hoySw') return; if (e.target.checked) revelar(); else { sfx.tick(); ocultar(); } });
+
+    let reclamada = false;
     window.Nube.alCambiarUsuario((u) => {
-      if (u && btn.classList.contains('vista-carta')) guardarVista(true);
-      else if (u && g.vista) mostrar();
-      else if (!u && g.vista) guardarVista(false);
+      if (u) {
+        const f = window.Nube.ficha();
+        if (f) {
+          if (f.hoy && f.hoy.dia === hoy && Number.isInteger(f.hoy.carta) && CARTAS[f.hoy.carta]) { if (f.hoy.carta !== g.carta) cambiarCarta(f.hoy.carta); }
+          else if (!reclamada) { reclamada = true; window.Nube.guardarFicha({ hoy: { dia: hoy, carta: g.carta } }).catch(() => { /* sin reglas nuevas: queda en este navegador */ }); }
+        }
+        if (visible()) guardarVista(true); else if (g.vista) mostrar();
+      } else if (g.vista) guardarVista(false);
     });
   })();
 

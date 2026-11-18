@@ -101,13 +101,17 @@ service cloud.firestore {
         && request.resource.data.perfil in ['free', 'full', 'premium'];
       // Su propio nombre y avatar (un avatar entre cinco, o ninguno).
       allow update: if signedIn() && request.auth.uid == uid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nombre', 'avatar'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nombre', 'avatar', 'hoy'])
         && (!('nombre' in request.resource.data) || (request.resource.data.nombre is string && request.resource.data.nombre.size() <= 80))
-        && (!('avatar' in request.resource.data) || request.resource.data.avatar in ['sol', 'luna', 'estrella', 'sacerdotisa', 'mago']);
+        && (!('avatar' in request.resource.data) || request.resource.data.avatar in ['sol', 'luna', 'estrella', 'sacerdotisa', 'mago'])
+        && (!('hoy' in request.resource.data) || (request.resource.data.hoy is map && request.resource.data.hoy.keys().hasOnly(['dia', 'carta'])
+            && request.resource.data.hoy.dia is string && request.resource.data.hoy.dia.size() == 10
+            && request.resource.data.hoy.carta is int && request.resource.data.hoy.carta >= 0 && request.resource.data.hoy.carta <= 77));
       allow update: if signedIn() && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(['nombre', 'email', 'creado', 'ultimoAcceso', 'accesos', 'perfil', 'avatar'])
+        && request.resource.data.keys().hasOnly(['nombre', 'email', 'creado', 'ultimoAcceso', 'accesos', 'perfil', 'avatar', 'hoy'])
         && request.resource.data.get('perfil', null) == resource.data.get('perfil', null)
         && request.resource.data.get('avatar', null) == resource.data.get('avatar', null)
+        && request.resource.data.get('hoy', null) == resource.data.get('hoy', null)
         && request.resource.data.email == resource.data.email
         && request.resource.data.creado == resource.data.creado
         && request.resource.data.ultimoAcceso == request.time
