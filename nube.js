@@ -13,9 +13,9 @@
   /* Perfiles: lo que cada uno incluye. null en un tope = sin límite. El admin lo cambia en config/perfiles. */
   const T3 = { una: true, tiempo: true, perspectivas: true };
   const PERF_DEF = {
-    free: { precio: 'Gratis', periodo: 'Disponible hoy', tiradas: { una: true, tiempo: true, perspectivas: false }, mazos: { rws: true, dodal: true, sola: false }, temaLibre: false, diario: true, lecturasDia: 5, guardadas: 10 },
-    full: { precio: '$3.990', periodo: 'al mes', tiradas: Object.assign({}, T3), mazos: { rws: true, dodal: true, sola: true }, temaLibre: true, diario: true, lecturasDia: 15, guardadas: 100 },
-    premium: { precio: '$6.990', periodo: 'al mes', tiradas: Object.assign({}, T3), mazos: { rws: true, dodal: true, sola: true }, temaLibre: true, diario: true, lecturasDia: null, guardadas: null }
+    free: { precio: 'Gratis', periodo: 'Disponible hoy', sonido: true, estilos: { 1: true, 2: false, 3: false, 4: false, 5: false }, tiradas: { una: true, tiempo: true, perspectivas: false }, mazos: { rws: true, dodal: true, sola: false }, temaLibre: false, diario: true, lecturasDia: 5, guardadas: 10 },
+    full: { precio: '$3.990', periodo: 'al mes', sonido: true, estilos: { 1: true, 2: true, 3: true, 4: false, 5: false }, tiradas: Object.assign({}, T3), mazos: { rws: true, dodal: true, sola: true }, temaLibre: true, diario: true, lecturasDia: 15, guardadas: 100 },
+    premium: { precio: '$6.990', periodo: 'al mes', sonido: true, estilos: { 1: true, 2: true, 3: true, 4: true, 5: true }, tiradas: Object.assign({}, T3), mazos: { rws: true, dodal: true, sola: true }, temaLibre: true, diario: true, lecturasDia: null, guardadas: null }
   };
   const PERFILES = ['free', 'full', 'premium'];
 

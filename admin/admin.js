@@ -17,10 +17,11 @@
   const DEF = { cartaDelDia: true, desfile: true, planes: true, cuentas: true, medicion: true, mazos: { rws: true, dodal: true, sola: true }, aviso: { activo: false, texto: '' } };
   const T3 = { una: true, tiempo: true, perspectivas: true };
   const PERF_DEF = {
-    free: { precio: 'Gratis', periodo: 'Disponible hoy', tiradas: { una: true, tiempo: true, perspectivas: false }, mazos: { rws: true, dodal: true, sola: false }, temaLibre: false, diario: true, lecturasDia: 5, guardadas: 10 },
-    full: { precio: '$3.990', periodo: 'al mes', tiradas: Object.assign({}, T3), mazos: { rws: true, dodal: true, sola: true }, temaLibre: true, diario: true, lecturasDia: 15, guardadas: 100 },
-    premium: { precio: '$6.990', periodo: 'al mes', tiradas: Object.assign({}, T3), mazos: { rws: true, dodal: true, sola: true }, temaLibre: true, diario: true, lecturasDia: null, guardadas: null }
+    free: { precio: 'Gratis', periodo: 'Disponible hoy', sonido: true, estilos: { 1: true, 2: false, 3: false, 4: false, 5: false }, tiradas: { una: true, tiempo: true, perspectivas: false }, mazos: { rws: true, dodal: true, sola: false }, temaLibre: false, diario: true, lecturasDia: 5, guardadas: 10 },
+    full: { precio: '$3.990', periodo: 'al mes', sonido: true, estilos: { 1: true, 2: true, 3: true, 4: false, 5: false }, tiradas: Object.assign({}, T3), mazos: { rws: true, dodal: true, sola: true }, temaLibre: true, diario: true, lecturasDia: 15, guardadas: 100 },
+    premium: { precio: '$6.990', periodo: 'al mes', sonido: true, estilos: { 1: true, 2: true, 3: true, 4: true, 5: true }, tiradas: Object.assign({}, T3), mazos: { rws: true, dodal: true, sola: true }, temaLibre: true, diario: true, lecturasDia: null, guardadas: null }
   };
+  const ESTILOS_SONIDO = [[1, 'Cristal y campanas'], [2, 'Cuenco tibetano y aliento'], [3, 'Arpa celestial'], [4, 'Cajita de música'], [5, 'Ritual y misterio']];
   const PERFILES = [['free', 'Free'], ['full', 'Full'], ['premium', 'Premium']];
   const esObj = (x) => x && typeof x === 'object' && !Array.isArray(x) && !(x instanceof Date);
   const clonar = (o) => (esObj(o) ? Object.keys(o).reduce((r, k) => { r[k] = clonar(o[k]); return r; }, {}) : o);
@@ -339,6 +340,9 @@
       <tr class="sub"><td colspan="4"><b>Lecturas</b></td></tr>
       ${filaB('Pregunta libre', 'Tema donde la persona escribe su propia pregunta.', (k) => ({ id: `pb_${k}_temaLibre`, on: P[k].temaLibre !== false }))}
       ${filaB('Guardar lecturas y notas', 'Diario privado en Mi espacio. Si lo apagas, no aparece el botón de guardar.', (k) => ({ id: `pb_${k}_diario`, on: P[k].diario !== false }))}
+      <tr class="sub"><td colspan="4"><b>Sonido</b></td></tr>
+      ${filaB('Sonido en el sitio', 'Si lo apagas, el botón «Sonido» invita a suscribirse en vez de activarse.', (k) => ({ id: `pb_${k}_sonido`, on: P[k].sonido !== false }))}
+      ${ESTILOS_SONIDO.map(([n, t]) => filaB('Estilo ' + n + ' · ' + t, '', (k) => ({ id: `pb_${k}_s_${n}`, on: (P[k].estilos || {})[n] !== false }))).join('')}
       <tr class="sub"><td colspan="4"><b>Topes</b> (vacío = sin límite)</td></tr>
       ${filaN('Lecturas por día', 'Se cuentan en el dispositivo de la persona, por día de Chile.', 'lecturasDia')}
       ${filaN('Lecturas guardadas', 'Cuántas puede conservar en Mi espacio.', 'guardadas')}
@@ -403,7 +407,7 @@
     // perfiles
     $$('[id^="pb_"]').forEach((i) => { i.onchange = () => {
       const [, k, tipo, x] = i.id.split('_');
-      if (tipo === 't') E.editP[k].tiradas[x] = i.checked; else if (tipo === 'm') E.editP[k].mazos[x] = i.checked; else E.editP[k][tipo] = i.checked;
+      if (tipo === 't') E.editP[k].tiradas[x] = i.checked; else if (tipo === 'm') E.editP[k].mazos[x] = i.checked; else if (tipo === 's') { E.editP[k].estilos = E.editP[k].estilos || {}; E.editP[k].estilos[x] = i.checked; } else E.editP[k][tipo] = i.checked;
       pintar(); }; });
     $$('[id^="pn_"]').forEach((i) => { i.onchange = () => {
       const [, k, campo] = i.id.split('_'), v = i.value.trim();

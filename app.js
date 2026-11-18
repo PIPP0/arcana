@@ -146,7 +146,9 @@
      Cinco estilos (sonido.js). La persona elige el suyo con la flecha junto a «Sonido». */
   let sonido = false;
   const S = window.ArcanaSonido;
-  const dice = (acc) => { if (sonido && S) S.sonar(acc); };
+  const sonidoOk = () => permisos().sonido !== false;
+  const estiloOk = (id) => ((permisos().estilos) || {})[id] !== false;
+  const dice = (acc) => { if (sonido && S && sonidoOk()) S.sonar(acc); };
   const sfx = {
     encender: () => dice('encender'), apagar() {}, tick: () => dice('tema'), mazo: () => dice('mazo'), tirada: () => dice('tirada'),
     barajar: () => dice('barajar'), repartir: () => dice('repartir'), elegir: (n) => dice('elegir' + (Math.min(n, 2) + 1)), soltar: () => dice('soltar'),
@@ -157,10 +159,19 @@
   const btnSon = $('#btnSonido'), btnEst = $('#btnEstilo'), menuSon = $('#menuSonido');
   function pintarMenuSonido() {
     if (!S || !menuSon) return;
-    menuSon.innerHTML = S.estilos.map((e) => `<button type="button" role="menuitemradio" aria-checked="${e.id === S.actual()}" data-estilo="${e.id}"><b>${e.id}. ${e.nombre}</b><span>${e.desc}</span></button>`).join('');
+    menuSon.innerHTML = S.estilos.map((e) => { const ok = estiloOk(e.id); return `<button type="button" role="menuitemradio" aria-checked="${e.id === S.actual()}" data-estilo="${e.id}"${ok ? '' : ' class="bloq" data-bloq="1"'}><b>${e.id}. ${e.nombre}${ok ? '' : ' · Con suscripción'}</b><span>${ok ? e.desc : 'Descúbrelo suscribiéndote.'}</span></button>`; }).join('');
+  }
+  /* Si el perfil cambia: el estilo elegido debe estar incluido y el sonido permitido. */
+  function ajustarSonidoPerfil() {
+    if (!S) return;
+    if (!estiloOk(S.actual())) { const ok = S.estilos.find((x) => estiloOk(x.id)); if (ok) S.poner(ok.id); }
+    if (sonido && !sonidoOk()) { sonido = false; btnSon.setAttribute('aria-pressed', 'false'); btnSon.textContent = 'Sonido: no'; if (btnEst) btnEst.hidden = true; cerrarMenuSonido(); }
+    btnSon.classList.toggle('bloq', !sonidoOk()); btnSon.title = sonidoOk() ? '' : 'Con suscripción';
+    pintarMenuSonido();
   }
   function cerrarMenuSonido() { if (menuSon) menuSon.hidden = true; if (btnEst) btnEst.setAttribute('aria-expanded', 'false'); }
   btnSon.addEventListener('click', (e) => {
+    if (!sonido && !sonidoOk()) { irAPlanes('El sonido se abre con una suscripción. Mira los planes.'); return; }
     sonido = !sonido;
     e.currentTarget.setAttribute('aria-pressed', String(sonido));
     e.currentTarget.textContent = sonido ? 'Sonido: sí' : 'Sonido: no';
@@ -173,6 +184,7 @@
   });
   if (menuSon) menuSon.addEventListener('click', (e) => {
     const b = e.target.closest('[data-estilo]'); if (!b) return;
+    if (b.dataset.bloq) { cerrarMenuSonido(); irAPlanes('Este estilo de sonido se abre con una suscripción. Mira los planes.'); return; }
     S.poner(Number(b.dataset.estilo)); pintarMenuSonido(); sfx.encender(); cerrarMenuSonido(); btnEst.focus();
   });
   document.addEventListener('click', (e) => { if (menuSon && !menuSon.hidden && !e.target.closest('.sonido-caja')) cerrarMenuSonido(); });
@@ -856,6 +868,7 @@
         .concat(TIRADAS.map((t) => li((P.tiradas || {})[t.id] !== false, t.nombre)))
         .concat(MAZOS.filter((m) => !m.pendiente).map((m) => li((P.mazos || {})[m.id] !== false, `Mazo ${m.nombre}`)))
         .concat([li(P.temaLibre !== false, 'Pregunta libre')])
+        .concat([P.sonido === false ? li(false, 'Sonido místico') : li((Object.keys(P.estilos || {}).filter((n) => P.estilos[n] !== false).length || 0) > 0, `Sonido místico: ${Object.keys(P.estilos || {}).filter((n) => P.estilos[n] !== false).length} de 5 estilos`)])
         .concat([li(true, typeof P.lecturasDia === 'number' ? `${P.lecturasDia} lecturas al día` : 'Lecturas sin límite')])
         .concat([P.diario === false ? li(false, 'Guardar lecturas y notas') : li(true, typeof P.guardadas === 'number' ? `Guarda hasta ${P.guardadas} lecturas` : 'Diario sin límite')]);
       const boton = actual === k ? '<button type="button" class="btn" disabled>Tu plan actual</button>'
@@ -874,7 +887,7 @@
     r.toggle('f-sin-hoy', f.cartaDelDia === false);
     r.toggle('f-sin-desfile', f.desfile === false);
     r.toggle('f-sin-planes', f.planes === false);
-    pintarVitrina(); pintarDesfile(); pintarListaMazos(); pintarTiradas(); pintarTemas(); pintarCupo(); pintarPlanes();
+    ajustarSonidoPerfil(); pintarVitrina(); pintarDesfile(); pintarListaMazos(); pintarTiradas(); pintarTemas(); pintarCupo(); pintarPlanes();
     const av = $('#avisoSitio');
     if (av) { const on = !!(f.aviso && f.aviso.activo && f.aviso.texto); av.hidden = !on; av.textContent = on ? f.aviso.texto : ''; }
     if (cuentaCaja) cuentaCaja.hidden = !(window.Nube.activa && f.cuentas !== false);
