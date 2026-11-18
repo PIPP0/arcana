@@ -195,7 +195,7 @@
   function ir(id, foco = true) {
     if (id === 'tirada') estado.pregunta = $('#pregunta').value.trim();
     if (id === 'barajar') prepararBarajar();
-    if (id === 'espacio') pintarHistorial();
+    if (id === 'espacio') { pintarHistorial(); pintarCalendario(); }
     if (id === 'perfil') pintarCuenta();
     if (id === 'intencion') pintarTemas();
     if (id === 'mazo' || id === 'tirada') pintarCupo();
@@ -340,9 +340,11 @@
         </div>
         <div class="acciones"><button type="button" class="btn primario" data-ir="mazo">Profundizar con tres cartas</button></div>`;
     }
+    if (g.vista && window.Nube.usuario()) anotarDia(hoy, g.carta);
     btn.addEventListener('click', () => {
       if (btn.classList.contains('vista-carta')) { ampliar(g.carta, 'rws'); return; }
       sfx.revelar(1); setTimeout(() => sfx.entrega(true), 650); mostrar(); window.Nube.cartaHoy();
+      anotarDia(hoy, g.carta);
       if (window.Nube.usuario()) guardarVista(true);
     });
     function guardarVista(v) { g.vista = v; try { localStorage.setItem('arcana.hoy.v1', JSON.stringify(g)); } catch (e) { /* sigue igual */ } }
@@ -598,6 +600,62 @@
     window.Nube.lectura({ mazo: mz, tema: estado.tema, tirada: estado.tirada.id, cartas: ids, pregunta: !!estado.pregunta });
   }
 
+  /* ---------- calendario de la carta del día (solo en este dispositivo) ---------- */
+  const HIST_K = 'arcana.hoy.hist.v1';
+  const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+  const diaHoy = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Santiago' }).format(new Date());
+  function leerHist() { try { const h = JSON.parse(localStorage.getItem(HIST_K)); return h && typeof h === 'object' ? h : {}; } catch (e) { return {}; } }
+  function anotarDia(dia, carta) {
+    const h = leerHist(); h[dia] = carta;
+    try { localStorage.setItem(HIST_K, JSON.stringify(h)); } catch (e) { /* sin almacenamiento: el calendario no guarda */ }
+  }
+  const sumarDias = (f, n) => { const [y, m, d] = f.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10); };
+  const cal = { y: null, m: 0, sel: null };
+  const fmtDiaLargo = new Intl.DateTimeFormat('es-CL', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  function pintarCalendario() {
+    const grid = $('#calGrid'); if (!grid) return;
+    const hist = leerHist(), hoy = diaHoy(), [hy, hm] = hoy.split('-').map(Number);
+    const dados = Object.keys(hist).filter((f) => CARTAS[hist[f]]).sort();
+    if (cal.y === null) { cal.y = hy; cal.m = hm - 1; cal.sel = hist[hoy] !== undefined ? hoy : (dados[dados.length - 1] || null); }
+    const primero = (new Date(Date.UTC(cal.y, cal.m, 1)).getUTCDay() + 6) % 7, dias = new Date(Date.UTC(cal.y, cal.m + 1, 0)).getUTCDate();
+    const idxMes = cal.y * 12 + cal.m, idxHoy = hy * 12 + (hm - 1);
+    $('#calMes').textContent = `${MESES[cal.m]} ${cal.y}`;
+    $('#calSig').disabled = idxMes >= idxHoy; $('#calAnt').disabled = idxMes <= idxHoy - 24;
+    let h = '<span class="cal-v"></span>'.repeat(primero);
+    for (let d = 1; d <= dias; d++) {
+      const f = `${cal.y}-${String(cal.m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`, id = hist[f], esHoy = f === hoy;
+      if (id !== undefined && CARTAS[id]) h += `<button type="button" class="cal-d con${esHoy ? ' hoy' : ''}${cal.sel === f ? ' sel' : ''}" data-dia="${f}" aria-pressed="${cal.sel === f}" aria-label="${d} de ${MESES[cal.m]}: ${esc(CARTAS[id].nombre)}"><img src="${src('rws', id)}" alt="" loading="lazy" decoding="async"><span>${d}</span></button>`;
+      else h += `<span class="cal-d${esHoy ? ' hoy' : ''}${f > hoy ? ' fut' : ''}"><span>${d}</span></span>`;
+    }
+    grid.innerHTML = h;
+    // estadísticas: cartas del mes, total y racha
+    const delMes = dados.filter((f) => f.startsWith(`${cal.y}-${String(cal.m + 1).padStart(2, '0')}`)).length;
+    let racha = 0, f = hist[hoy] !== undefined ? hoy : sumarDias(hoy, -1);
+    while (CARTAS[hist[f]] && racha < 4000) { racha++; f = sumarDias(f, -1); }
+    $('#calStats').innerHTML = dados.length
+      ? `<b>${delMes}</b> ${delMes === 1 ? 'carta' : 'cartas'} en ${MESES[cal.m]} · <b>${dados.length}</b> en total · racha de <b>${racha}</b> ${racha === 1 ? 'día' : 'días'}`
+      : 'Todavía no has dado vuelta ninguna carta del día.';
+    // detalle del día elegido
+    const det = $('#calDet'), id = cal.sel ? hist[cal.sel] : undefined;
+    if (id !== undefined && CARTAS[id]) {
+      const k = CARTAS[id], [yy, mm, dd] = cal.sel.split('-').map(Number);
+      det.innerHTML = `<div class="cal-carta"><button type="button" class="cal-mini" data-ver-cal="${id}" aria-label="Ver ${esc(k.nombre)} en grande">${carta(cara(id, 'rws', false), 'rws')}</button>
+        <div><p class="pos">${fmtDiaLargo.format(new Date(Date.UTC(yy, mm - 1, dd)))}</p><h4>${esc(k.nombre)}</h4><p class="claves">${esc(k.claves)}</p><p>${esc(k.luz)}</p><p class="cal-q"><b>Una pregunta para ti</b>${esc(k.pregunta)}</p></div></div>`;
+    } else {
+      det.innerHTML = dados.length ? '<p class="cal-vacio">Toca un día con carta para recordar qué te acompañó.</p>'
+        : '<div class="cal-vacio"><p>Cada vez que des vuelta tu carta del día, quedará anotada aquí, con su fecha.</p><div class="acciones" style="justify-content:flex-start"><button type="button" class="btn primario chico" id="calIr">Dar vuelta mi carta de hoy</button></div></div>';
+    }
+  }
+  const calEl = $('#calendario');
+  if (calEl) calEl.addEventListener('click', (e) => {
+    const d = e.target.closest('[data-dia]');
+    if (d) { cal.sel = d.dataset.dia; pintarCalendario(); return; }
+    if (e.target.closest('#calAnt')) { cal.m--; if (cal.m < 0) { cal.m = 11; cal.y--; } pintarCalendario(); return; }
+    if (e.target.closest('#calSig')) { cal.m++; if (cal.m > 11) { cal.m = 0; cal.y++; } pintarCalendario(); return; }
+    const v = e.target.closest('[data-ver-cal]'); if (v) { ampliar(Number(v.dataset.verCal), 'rws'); return; }
+    if (e.target.closest('#calIr')) { ir('inicio'); setTimeout(() => { const h = $('#hoy'); if (h) h.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 80); }
+  });
+
   /* ---------- guardar / historial (solo en este dispositivo) ---------- */
   function leer() { try { return JSON.parse(localStorage.getItem(CLAVE)) || []; } catch (e) { return []; } }
   function escribir(a) { try { localStorage.setItem(CLAVE, JSON.stringify(a)); return true; } catch (e) { return false; } }
@@ -761,7 +819,7 @@
       <section class="tarjeta-p"><h3>Tu plan</h3><p><b>${NOMBRE_PERFIL[p]}</b> · ${resumenPerfil()}.</p><p>${cupo || 'Lecturas sin límite.'}</p>
         ${p !== 'premium' ? '<div class="acciones"><button type="button" class="btn primario chico" data-planes="1">Descubre Premium →</button></div>' : ''}</section>
       <section class="tarjeta-p"><h3>Tu espacio</h3><p>${lect ? `${lect} ${lect === 1 ? 'lectura guardada' : 'lecturas guardadas'} en este dispositivo.` : 'Todavía no guardas ninguna lectura en este dispositivo.'}</p>
-        <div class="acciones"><button type="button" class="btn chico" data-ir="espacio">Ir a Mi espacio</button></div></section>
+        <div class="acciones"><button type="button" class="btn chico" data-ir="espacio">Ver mi calendario y mis lecturas</button></div></section>
       <div class="acciones fin-p"><button type="button" class="btn" id="btnSalir">Salir de mi cuenta</button><button type="button" class="btn chico" id="btnBorrarFicha">Borrar mi ficha</button></div>`;
   }
   const cuentaCaja = $('#cuentaCaja');
