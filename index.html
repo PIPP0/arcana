@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,500;1,6..96,400&family=Jost:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=34">
+<link rel="stylesheet" href="styles.css?v=35">
 </head>
 <body>
 <a class="salto" href="#contenido">Saltar al contenido</a>
@@ -260,6 +260,18 @@
   <div id="visorCuerpo"></div>
 </dialog>
 
+<dialog class="modal" id="modalConfirmar" aria-labelledby="mcTitulo" aria-describedby="mcTexto">
+  <form method="dialog" id="mcForm">
+    <span class="mc-icono" aria-hidden="true">✦</span>
+    <h3 id="mcTitulo">¿Estás segura o seguro?</h3>
+    <p id="mcTexto"></p>
+    <div class="acciones">
+      <button type="button" class="btn" id="mcCancelar" value="no">Cancelar</button>
+      <button type="button" class="btn peligro" id="mcAceptar" value="si">Borrar</button>
+    </div>
+  </form>
+</dialog>
+
 <div class="aviso" id="aviso" role="status" aria-live="polite"></div>
 
 <script src="nube-config.js?v=16"></script>
@@ -267,6 +279,6 @@
 <script src="cards.js?v=15"></script>
 <script src="menores.js?v=15"></script>
 <script src="sonido.js?v=1"></script>
-<script src="app.js?v=41"></script>
+<script src="app.js?v=43"></script>
 </body>
 </html>

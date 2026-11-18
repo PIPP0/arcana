@@ -142,6 +142,20 @@
     clearTimeout(tAviso); tAviso = setTimeout(() => el.classList.remove('ver'), 2600);
   }
 
+  /* ---------- confirmar antes de borrar (modal) ---------- */
+  function confirmarModal({ titulo, texto, boton = 'Borrar' }) {
+    return new Promise((resolver) => {
+      const d = $('#modalConfirmar'); if (!d || !d.showModal) { resolver(window.confirm(`${titulo}\n\n${texto}`)); return; }
+      $('#mcTitulo').textContent = titulo; $('#mcTexto').textContent = texto; $('#mcAceptar').textContent = boton;
+      let hecho = false;
+      const fin = (v) => { if (hecho) return; hecho = true; limpiar(); if (d.open) d.close(); resolver(v); };
+      const si = () => fin(true), no = () => fin(false), fuera = (e) => { if (e.target === d) fin(false); }, cancel = (e) => { e.preventDefault(); fin(false); };
+      const limpiar = () => { $('#mcAceptar').removeEventListener('click', si); $('#mcCancelar').removeEventListener('click', no); d.removeEventListener('click', fuera); d.removeEventListener('cancel', cancel); };
+      $('#mcAceptar').addEventListener('click', si); $('#mcCancelar').addEventListener('click', no); d.addEventListener('click', fuera); d.addEventListener('cancel', cancel);
+      d.showModal(); $('#mcCancelar').focus(); // el foco parte en «Cancelar» para no borrar sin querer
+    });
+  }
+
   /* ---------- sonido (apagado por defecto) ----------
      Cinco estilos (sonido.js). La persona elige el suyo con la flecha junto a «Sonido». */
   let sonido = false;
@@ -206,6 +220,7 @@
     $$('.vista').forEach((v) => { v.hidden = v.id !== 'v-' + id; });
     document.body.className = (id === 'detalle' ? 'tema-' + detMazo : CON_TEMA.includes(id) ? 'tema-' + estado.mazo : '') + (id === 'elegir' ? ' con-fija' : '') + (id === 'inicio' ? '' : ' interior');
     window.scrollTo(0, 0);
+    try { sessionStorage.setItem('arcana.vista.v1', id === 'detalle' ? 'detalle:' + detId : id); } catch (e) { /* sin almacenamiento */ }
     if (foco) { const h = $('#v-' + id + ' h1, #v-' + id + ' h2'); if (h) h.focus({ preventScroll: true }); }
   }
   document.addEventListener('click', (e) => {
@@ -751,8 +766,10 @@
       return;
     }
     if (e.target.id === 'btnDetBorrar') {
-      if (e.target.dataset.seguro !== '1') { e.target.dataset.seguro = '1'; e.target.textContent = 'Toca de nuevo para borrar'; return; }
-      escribir(leer().filter((x) => x.id !== detId)); detId = null; ir('espacio'); aviso('Lectura borrada.');
+      confirmarModal({ titulo: '¿Borrar esta lectura?', texto: 'Se elimina de este dispositivo, con su nota. No se puede deshacer.', boton: 'Borrar lectura' }).then((ok) => {
+        if (!ok) return;
+        escribir(leer().filter((x) => x.id !== detId)); detId = null; ir('espacio'); aviso('Lectura borrada.');
+      });
     }
   });
 
@@ -775,8 +792,10 @@
     if (e.target.closest('#carAnt') && c) { c.scrollBy({ left: -pasoCarrusel(c), behavior: 'smooth' }); return; }
     if (e.target.closest('#carSig') && c) { c.scrollBy({ left: pasoCarrusel(c), behavior: 'smooth' }); return; }
     const b = e.target.closest('[data-borrar]'); if (!b) return;
-    if (b.dataset.seguro !== '1') { b.dataset.seguro = '1'; b.textContent = 'Toca de nuevo para borrar'; return; }
-    escribir(leer().filter((x) => x.id !== b.dataset.borrar)); pintarHistorial(); aviso('Lectura borrada.');
+    confirmarModal({ titulo: '¿Borrar esta lectura?', texto: 'Se elimina de este dispositivo, con su nota. No se puede deshacer.', boton: 'Borrar lectura' }).then((ok) => {
+      if (!ok) return;
+      escribir(leer().filter((x) => x.id !== b.dataset.borrar)); pintarHistorial(); aviso('Lectura borrada.');
+    });
   });
 
   $('#creditos').innerHTML = MAZOS.map((m) => `<li>${m.credito}</li>`).join('');
@@ -964,7 +983,8 @@
           const n = ($('#pNombre').value || '').trim();
           await window.Nube.guardarFicha({ nombre: n }); if (document.activeElement) document.activeElement.blur(); pintarCuenta(); aviso('Nombre guardado.');
         } else if (id === 'btnBorrarFicha') {
-          if (e.target.dataset.seguro !== '1') { e.target.dataset.seguro = '1'; e.target.textContent = 'Toca de nuevo para borrar'; return; }
+          const ok = await confirmarModal({ titulo: '¿Borrar tu ficha?', texto: 'Se eliminan tu nombre, tu avatar y el plan asignado a tu cuenta, y se cierra tu sesión. Tus lecturas de este dispositivo no se tocan. No se puede deshacer.', boton: 'Borrar mi ficha' });
+          if (!ok) return;
           await window.Nube.borrarMiFicha(); await window.Nube.salir(); ir('inicio'); aviso('Tu ficha se borró.');
         }
       } catch (err) {
@@ -1032,15 +1052,28 @@
   }
   window.Nube.alCambiarFunciones(aplicarFunciones);
 
-  ir('inicio', false);
+  /* Al actualizar, se queda en la misma pantalla (Mi espacio, perfil o el detalle de una lectura) y en el mismo lugar.
+     El resto del recorrido (mazo, cartas, lectura en curso) parte de la portada. */
+  let vistaInicial = 'inicio';
+  try {
+    const nav = performance.getEntriesByType('navigation')[0], g = sessionStorage.getItem('arcana.vista.v1') || '';
+    if (nav && nav.type === 'reload') {
+      if (g === 'espacio' || g === 'perfil') vistaInicial = g;
+      else if (g.startsWith('detalle:') && leer().some((x) => x.id === g.slice(8))) vistaInicial = g;
+    }
+  } catch (e) { /* sin almacenamiento: parte de la portada */ }
+  if (vistaInicial.startsWith('detalle:')) abrirDetalle(vistaInicial.slice(8)); else ir(vistaInicial, false);
 
-  /* Al actualizar la portada, vuelve al mismo lugar en que estabas (el resto parte de cero). */
   (function () {
-    const K = 'arcana.scroll.v1';
+    const K = 'arcana.scroll.v2';
+    const vistaActual = () => { const v = document.querySelector('.vista:not([hidden])'); return v ? v.id.slice(2) : ''; };
     let y0 = 0;
-    try { const nav = performance.getEntriesByType('navigation')[0]; if (nav && nav.type === 'reload') y0 = Number(sessionStorage.getItem(K)) || 0; } catch (e) { /* sin almacenamiento */ }
+    try {
+      const nav = performance.getEntriesByType('navigation')[0];
+      if (nav && nav.type === 'reload') { const g = JSON.parse(sessionStorage.getItem(K) || 'null'); if (g && g.v === vistaActual() && g.y > 0) y0 = g.y; }
+    } catch (e) { /* sin almacenamiento */ }
     let t = null;
-    const guardar = () => { const v = $('#v-inicio'); if (v && !v.hidden) { try { sessionStorage.setItem(K, String(Math.round(window.scrollY))); } catch (e) { /* sigue igual */ } } };
+    const guardar = () => { try { sessionStorage.setItem(K, JSON.stringify({ v: vistaActual(), y: Math.round(window.scrollY) })); } catch (e) { /* sigue igual */ } };
     window.addEventListener('scroll', () => { if (t) return; t = setTimeout(() => { t = null; guardar(); }, 150); }, { passive: true });
     window.addEventListener('pagehide', guardar);
     window.addEventListener('beforeunload', guardar);
