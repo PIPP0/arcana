@@ -165,3 +165,13 @@ input.num { width: 110px; padding: 6px 8px; border-radius: 8px; border: 1px soli
 tr.sub td { padding-top: 16px; color: var(--oro, #e2c17c); font-size: .85rem; letter-spacing: .06em; text-transform: uppercase; }
 
 input.txt { width: 130px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--linea, #444); background: rgba(0,0,0,.3); color: inherit; font: inherit; }
+
+/* personas: lista única con detalle por fila */
+table.sub { width: 100%; font-size: .85rem; margin: 6px 0 10px; }
+table.sub th, table.sub td { padding: 6px 8px; }
+tr[data-kv] { cursor: pointer; }
+tr[data-kv]:hover td { background: rgba(226,193,124,.06); }
+tr.det table.sub .chip { margin: 1px 2px; }
+.chk { display: flex; align-items: center; gap: 8px; margin: 12px 0 8px; cursor: pointer; }
+
+.enlace-s { background: none; border: 0; padding: 0; color: var(--oro, #e2c17c); font: inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }

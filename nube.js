@@ -95,7 +95,7 @@
   }
 
   /* ---------- medición anónima ---------- */
-  const ses = { sid: aleatorio(20), v: idVisitante(), dia: hoyChile(), disp: disp(), vistas: {}, lecturas: 0, cartaHoy: false, creada: false };
+  const ses = { sid: aleatorio(20), v: idVisitante(), uid: null, dia: hoyChile(), disp: disp(), vistas: {}, lecturas: 0, cartaHoy: false, creada: false };
   let sucia = false, reloj = null;
   function marcar() { sucia = true; if (!reloj) reloj = setTimeout(volcar, 7000); }
   async function volcar() {
@@ -107,8 +107,15 @@
       await anonimo(c);
       const { fs } = c, ref = fs.doc(c.db, 'sesiones', ses.sid);
       const d = { anon: ses.v, dia: ses.dia, disp: ses.disp, vistas: ses.vistas, lecturas: ses.lecturas, cartaHoy: ses.cartaHoy, ultima: fs.serverTimestamp() };
+      const yo = c.auth.currentUser; if (yo && !yo.isAnonymous) d.uid = yo.uid; // solo con sesión iniciada: la visita se asocia a la cuenta
       ['mazo', 'tema', 'tirada'].forEach((k) => { if (ses[k]) d[k] = ses[k]; });
-      if (!ses.creada) { d.inicio = fs.serverTimestamp(); await fs.setDoc(ref, d); ses.creada = true; } else { await fs.updateDoc(ref, d); }
+      if (ses.sinUid) delete d.uid;
+      const escribir = async () => { if (!ses.creada) { d.inicio = fs.serverTimestamp(); await fs.setDoc(ref, d); ses.creada = true; } else { await fs.updateDoc(ref, d); } };
+      try { await escribir(); }
+      catch (e1) {
+        // si las reglas aún no aceptan el campo uid, se vuelve a medir sin él (anónimo) en vez de perder la visita
+        if (d.uid) { ses.sinUid = true; delete d.uid; await escribir(); } else throw e1;
+      }
     } catch (e) { sucia = true; }
   }
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && sucia) volcar(); });

@@ -40,8 +40,9 @@ service cloud.firestore {
       allow read: if esAdmin();
       allow create: if signedIn()
         && sid.size() >= 16 && sid.size() <= 32
-        && request.resource.data.keys().hasOnly(['anon', 'dia', 'inicio', 'ultima', 'disp', 'vistas', 'mazo', 'tema', 'tirada', 'lecturas', 'cartaHoy'])
+        && request.resource.data.keys().hasOnly(['anon', 'dia', 'inicio', 'ultima', 'disp', 'vistas', 'mazo', 'tema', 'tirada', 'lecturas', 'cartaHoy', 'uid'])
         && request.resource.data.keys().hasAll(['anon', 'dia', 'inicio', 'ultima', 'disp', 'vistas', 'lecturas'])
+        && (!('uid' in request.resource.data) || request.resource.data.uid == request.auth.uid)
         && request.resource.data.anon is string && request.resource.data.anon.size() <= 40
         && request.resource.data.dia is string && request.resource.data.dia.size() == 10
         && request.resource.data.inicio == request.time && request.resource.data.ultima == request.time
@@ -53,7 +54,8 @@ service cloud.firestore {
         && campoEn('tirada', ['una', 'tiempo', 'perspectivas'])
         && campoEn('cartaHoy', [true, false]);
       allow update: if signedIn()
-        && request.resource.data.keys().hasOnly(['anon', 'dia', 'inicio', 'ultima', 'disp', 'vistas', 'mazo', 'tema', 'tirada', 'lecturas', 'cartaHoy'])
+        && request.resource.data.keys().hasOnly(['anon', 'dia', 'inicio', 'ultima', 'disp', 'vistas', 'mazo', 'tema', 'tirada', 'lecturas', 'cartaHoy', 'uid'])
+        && (!('uid' in request.resource.data) || request.resource.data.uid == request.auth.uid)
         && request.resource.data.anon == resource.data.anon
         && request.resource.data.dia == resource.data.dia
         && request.resource.data.inicio == resource.data.inicio

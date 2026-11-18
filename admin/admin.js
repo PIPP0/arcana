@@ -86,7 +86,7 @@
   }
 
   /* ================= estado ================= */
-  const E = { usuario: null, seccion: 'resumen', rango: 14, datos: null, cargando: false, error: '', correos: null, funciones: null, edit: null, perfiles: null, editP: null, buscar: '', fMazo: '', fTema: '', fTirada: '', fPregunta: '', mazoMapa: 'rws', gastoLecturas: 0, cuentas: null, abierto: null };
+  const E = { usuario: null, seccion: 'resumen', rango: 14, datos: null, cargando: false, error: '', correos: null, funciones: null, edit: null, perfiles: null, editP: null, buscar: '', verAnon: true, fMazo: '', fTema: '', fTirada: '', fPregunta: '', mazoMapa: 'rws', gastoLecturas: 0, cuentas: null, abierto: null };
 
   /* ================= pantallas ================= */
   const app = $('#app');
@@ -218,7 +218,7 @@
     let h = cabeza('Resumen', `Últimos ${E.rango} días, hora de Chile. Todo es anónimo: no hay preguntas ni notas.`, rangoCtl());
     if (!sesN && !E.datos.personas.length) return h + `<div class="tarjeta">${vacio('Todavía no hay datos', 'Cuando alguien abra el sitio, aquí verás visitas, lecturas y recorridos. Si ya lo abriste, revisa que la medición esté encendida en Funciones y que tu navegador no pida «no rastrear».')}</div>`;
     h += `<div class="kpis">
-      ${kpi('Visitas', n0(sesN), `${n0(c.visit.size)} personas distintas`)}
+      ${kpi('Visitas', n0(sesN), `${n0(c.visit.size)} personas distintas · <button type="button" class="enlace-s" data-ir-s="personas">Ver detalle →</button>`)}
       ${kpi('Lecturas completadas', n0(c.lec.length), `${pct(act, sesN)} de las visitas llegó hasta el final`)}
       ${kpi('Terminan lo que empiezan', ini ? pct(act, ini) : '—', `${n0(ini)} llegaron a barajar`)}
       ${kpi('Carta del día', n0(c.hoy), `${pct(c.hoy, sesN)} de las visitas la reveló`)}
@@ -236,26 +236,55 @@
     return h;
   }
 
+  /* ---------- personas: cuentas y visitantes anónimos en una sola lista, cada fila con el detalle de sus visitas ---------- */
+  const mas = (arr) => { const c = {}; arr.forEach((x) => { if (x) c[x] = (c[x] || 0) + 1; }); return Object.keys(c).sort((a, b) => c[b] - c[a])[0] || ''; };
+  const nombreEquipo = (d) => (d === 'movil' ? 'Celular' : d === 'escritorio' ? 'Computador' : '—');
+  const masTarde = (a, b) => (!a ? b : !b ? a : (a > b ? a : b));
+  function filasPersonas(c) {
+    // si un navegador inició sesión alguna vez, todas sus visitas se asocian a esa cuenta
+    const duenio = {}; c.ses.forEach((x) => { if (x.uid) duenio[x.anon] = x.uid; });
+    const porUid = {}, porAnon = {};
+    c.ses.forEach((x) => { const u = x.uid || duenio[x.anon]; if (u) (porUid[u] = porUid[u] || []).push(x); else (porAnon[x.anon] = porAnon[x.anon] || []).push(x); });
+    const resumen = (l) => {
+      l.sort((a, b) => (b.inicio || 0) - (a.inicio || 0));
+      return { ses: l, n: l.length, lect: l.reduce((t, x) => t + (x.lecturas || 0), 0), primera: l.length ? l[l.length - 1].inicio : null, ultima: l.length ? (l[0].ultima || l[0].inicio) : null, disp: mas(l.map((x) => x.disp)), hoy: l.some((x) => x.cartaHoy) };
+    };
+    const filas = E.datos.personas.map((p) => { const r = resumen(porUid[p.uid] || []); return Object.assign(r, { tipo: 'cuenta', clave: 'c' + p.uid, p, nombre: p.nombre || 'Sin nombre', correo: p.email, entro: p.creado, ultimo: masTarde(p.ultimoAcceso, r.ultima), visitas: Math.max(r.n, p.accesos || 0) }); });
+    Object.keys(porAnon).forEach((a) => { const r = resumen(porAnon[a]); filas.push(Object.assign(r, { tipo: 'visitante', clave: 'v' + a, nombre: 'Visitante #' + a.slice(0, 6), correo: '—', entro: r.primera, ultimo: r.ultima, visitas: r.n })); });
+    return filas.sort((a, b) => (b.ultimo || 0) - (a.ultimo || 0));
+  }
+  function detalleFila(f) {
+    const sub = f.ses.length ? `<div class="tabla-c"><table class="sub"><thead><tr><th>Día</th><th>Entró</th><th>Duración</th><th>Equipo</th><th>Recorrido</th><th>Mazo</th><th>Tema</th><th>Tirada</th><th>Lecturas</th><th>Carta del día</th></tr></thead><tbody>${f.ses.map((x) => {
+      const dur = x.inicio && x.ultima ? Math.max(0, Math.round((x.ultima - x.inicio) / 60000)) : 0;
+      const pasos = PASOS.filter(([id]) => x.vistas && x.vistas[id] > 0).map(([id, t]) => `<span class="chip">${esc(t)}${x.vistas[id] > 1 ? ' ×' + x.vistas[id] : ''}</span>`).join(' ') || '<span class="chip">Portada</span>';
+      return `<tr><td>${esc(x.dia)}</td><td>${hora(x.inicio)}</td><td>${dur ? dur + ' min' : '< 1 min'}</td><td>${nombreEquipo(x.disp)}</td><td>${pasos}</td><td>${x.mazo ? esc(MAZOS[x.mazo] || x.mazo) : '—'}</td><td>${x.tema ? esc(TEMAS[x.tema] || x.tema) : '—'}</td><td>${x.tirada ? esc(TIRADAS[x.tirada] || x.tirada) : '—'}</td><td>${n0(x.lecturas || 0)}</td><td>${x.cartaHoy ? 'Sí' : '—'}</td></tr>`; }).join('')}</tbody></table></div>`
+      : '<p class="nota">Todavía no hay visitas medidas asociadas a esta cuenta en este rango. Las visitas se asocian a la cuenta desde que la persona inicia sesión.</p>';
+    const ficha = f.tipo === 'cuenta' ? `<dl><div><dt>Identificador</dt><dd>${esc(f.p.uid)}</dd></div><div><dt>Alta</dt><dd>${hora(f.p.creado)}</dd></div><div><dt>Último acceso</dt><dd>${hora(f.p.ultimoAcceso)}</dd></div><div><dt>Accesos con sesión</dt><dd>${n0(f.p.accesos || 0)}</dd></div>${f.p.porPago ? '<div><dt>Suscripción</dt><dd>Mercado Pago · activa</dd></div>' : ''}</dl>` : '';
+    return `<tr class="det"><td colspan="8">${ficha}${sub}</td></tr>`;
+  }
+  function tablaFilas(F) {
+    if (!F.length) return vacio(E.buscar ? 'Sin resultados' : 'Todavía no hay personas', E.buscar ? 'Prueba con otro nombre o correo.' : 'Aparecerán cuando alguien visite el sitio o cree su cuenta.');
+    return `<div class="tabla-c"><table><thead><tr><th>Persona</th><th>Correo</th><th>Perfil</th><th>Entró</th><th>Último</th><th>Visitas</th><th>Lecturas</th><th>Equipo</th></tr></thead><tbody>${F.map((f) =>
+      `<tr data-kv="${esc(f.clave)}"><td>${esc(f.nombre)}</td><td>${esc(f.correo)}</td><td>${f.tipo === 'cuenta' ? selPerfil(f.p) + (f.p.porPago ? ' <span class="chip ok" title="Suscripción activa con Mercado Pago">pagado</span>' : '') : '—'}</td><td>${hora(f.entro)}</td><td>${hora(f.ultimo)}</td><td>${n0(f.visitas)}</td><td>${n0(f.lect)}</td><td>${nombreEquipo(f.disp)}</td></tr>${E.abierto === f.clave ? detalleFila(f) : ''}`).join('')}</tbody></table></div>`;
+  }
+  const filtrarFilas = (F) => { const q = E.buscar.trim().toLowerCase(); return F.filter((f) => (f.tipo === 'cuenta' || E.verAnon) && (!q || (f.nombre + ' ' + f.correo).toLowerCase().includes(q))); };
+
   function vPersonas() {
-    const q = E.buscar.trim().toLowerCase(), P = E.datos.personas.filter((p) => !q || (p.email + ' ' + (p.nombre || '')).toLowerCase().includes(q));
-    let h = cabeza('Personas', 'Quienes crearon cuenta (con Google o con correo y contraseña) desde «Mi espacio». Aquí también les asignas su perfil. Es opcional, así que el sitio tiene muchas más visitas que cuentas.', `<button type="button" class="btn chico" id="recargar">Actualizar</button><button type="button" class="btn chico" id="csvPersonas" ${P.length ? '' : 'disabled'}>Descargar CSV</button>`);
+    const c = calc(), F = filasPersonas(c), nAnon = F.filter((f) => f.tipo === 'visitante').length, V = filtrarFilas(F);
+    let h = cabeza('Personas', `Cuentas y visitantes, en una sola lista. Toca una fila para ver cada una de sus visitas. Últimos ${E.rango} días, hora de Chile. Los visitantes sin cuenta son anónimos: cada navegador tiene un código al azar.`,
+      `${rangoCtl()}<button type="button" class="btn chico" id="csvPersonas" ${V.length ? '' : 'disabled'}>Descargar CSV</button>`);
     const hoy = fDia.format(new Date()), semana = fDia.format(new Date(Date.now() - 7 * 864e5));
     const nuevas = E.datos.personas.filter((p) => p.creado && fDia.format(p.creado) >= semana).length, activasHoy = E.datos.personas.filter((p) => p.ultimoAcceso && fDia.format(p.ultimoAcceso) === hoy).length;
-    h += `<div class="kpis"><div class="kpi"><div class="t">Cuentas</div><div class="n">${n0(E.datos.personas.length)}</div><div class="d">${E.datos.topes.personas ? 'Se muestran las 500 más recientes' : 'En total'}</div></div>
-      <div class="kpi"><div class="t">Nuevas esta semana</div><div class="n">${n0(nuevas)}</div><div class="d">Últimos 7 días</div></div>
-      <div class="kpi"><div class="t">Activas hoy</div><div class="n">${n0(activasHoy)}</div><div class="d">Entraron hoy</div></div></div>`;
-    h += `<div class="tarjeta"><div class="filtros"><input type="search" id="buscar" placeholder="Buscar por nombre o correo" value="${esc(E.buscar)}" aria-label="Buscar personas"></div><div id="tablaPersonas">${tablaPersonas(P)}</div>
-      <p class="nota" style="margin-top:12px">Las lecturas son anónimas y no se vinculan a ninguna cuenta: el panel no puede decir qué leyó una persona. Para borrar una ficha, la persona usa «Borrar mi ficha» en su espacio.</p></div>`;
+    const kpi = (t, n, d) => `<div class="kpi"><div class="t">${t}</div><div class="n">${n}</div><div class="d">${d}</div></div>`;
+    h += `<div class="kpis">${kpi('Visitantes distintos', n0(c.visit.size), `${n0(c.ses.length)} visitas en total`)}${kpi('Con lecturas', n0(F.filter((f) => f.lect > 0).length), 'Terminaron al menos una')}${kpi('Volvieron', n0(c.volvieron), 'Visitaron en más de un día')}
+      ${kpi('Cuentas', n0(E.datos.personas.length), E.datos.topes.personas ? 'Se muestran las 500 más recientes' : 'En total')}${kpi('Nuevas esta semana', n0(nuevas), 'Cuentas de los últimos 7 días')}${kpi('Activas hoy', n0(activasHoy), 'Cuentas que entraron hoy')}</div>`;
+    h += `<div class="tarjeta"><div class="filtros"><input type="search" id="buscar" placeholder="Buscar por nombre o correo…" value="${esc(E.buscar)}" aria-label="Buscar personas"></div>
+      <label class="chk"><input type="checkbox" id="verAnon" ${E.verAnon ? 'checked' : ''}> Incluir visitantes anónimos (${n0(nAnon)})</label>
+      <div id="tablaPersonas">${tablaFilas(V)}</div>
+      <p class="nota" style="margin-top:12px">Nunca se guardan preguntas ni notas. Quien no ha entrado a su cuenta es anónimo (un código al azar por navegador); cuando inicia sesión, sus visitas se asocian a su cuenta.${E.datos.topes && E.datos.topes.sesiones ? ' Se muestran las 2.000 visitas más recientes.' : ''} Para borrar una ficha, la persona usa «Borrar mi ficha» en su perfil.</p></div>`;
     return h;
   }
   const selPerfil = (p) => `<select class="sel-perfil" data-asig="${esc(p.uid)}" aria-label="Perfil de ${esc(p.email)}">${PERFILES.map(([k, n]) => `<option value="${k}" ${(p.perfil || 'free') === k ? 'selected' : ''}>${n}</option>`).join('')}</select>`;
-  function tablaPersonas(P) {
-    if (!P.length) return vacio(E.buscar ? 'Sin resultados' : 'Todavía no hay cuentas', E.buscar ? 'Prueba con otro nombre o correo.' : 'Aparecerán cuando alguien entre o cree su cuenta en Mi espacio.');
-    return `<div class="tabla-c"><table><thead><tr><th>Persona</th><th>Correo</th><th>Perfil</th><th>Alta</th><th>Último acceso</th><th>Accesos</th></tr></thead><tbody>${P.map((p) => {
-      const ab = E.abierto === 'p' + p.uid;
-      return `<tr data-k="p${esc(p.uid)}"><td>${esc(p.nombre || 'Sin nombre')}</td><td>${esc(p.email)}</td><td>${selPerfil(p)}${p.porPago ? ' <span class="chip ok" title="Suscripción activa con Mercado Pago">pagado</span>' : ''}</td><td>${fecha(p.creado)}</td><td>${hora(p.ultimoAcceso)}</td><td>${n0(p.accesos || 0)}</td></tr>${ab ? `<tr class="det"><td colspan="6"><dl><div><dt>Identificador</dt><dd>${esc(p.uid)}</dd></div><div><dt>Alta</dt><dd>${hora(p.creado)}</dd></div><div><dt>Último acceso</dt><dd>${hora(p.ultimoAcceso)}</dd></div><div><dt>Accesos</dt><dd>${n0(p.accesos || 0)}</dd></div></dl></td></tr>` : ''}`; }).join('')}</tbody></table></div>`;
-  }
-
   function vLecturas() {
     const L = E.datos.lecturas.filter((l) => (!E.fMazo || l.mazo === E.fMazo) && (!E.fTema || l.tema === E.fTema) && (!E.fTirada || l.tirada === E.fTirada) && (!E.fPregunta || String(!!l.pregunta) === E.fPregunta))
       .sort((a, b) => (b.fecha || 0) - (a.fecha || 0));
@@ -395,19 +424,19 @@
   }
   function enlazar() {
     const r = $('#recargar'); if (r) r.onclick = () => recargar(true);
+    $$('[data-ir-s]').forEach((x) => { x.onclick = () => ir(x.dataset.irS); });
     $$('[data-r]').forEach((b) => { b.onclick = () => { E.rango = Number(b.dataset.r); pintar(); }; });
-    $$('tr[data-k]').forEach((tr) => { tr.onclick = (ev) => { if (ev.target.closest('select')) return; E.abierto = E.abierto === 'p' + tr.dataset.k.slice(1) ? null : 'p' + tr.dataset.k.slice(1); pintar(); }; });
-    const b = $('#buscar'); if (b) b.oninput = () => {
-      E.buscar = b.value; const q = E.buscar.trim().toLowerCase();
-      $('#tablaPersonas').innerHTML = tablaPersonas(E.datos.personas.filter((p) => !q || (p.email + ' ' + (p.nombre || '')).toLowerCase().includes(q)));
-      $$('tr[data-k]').forEach((tr) => { tr.onclick = (ev) => { if (ev.target.closest('select')) return; E.abierto = E.abierto === 'p' + tr.dataset.k.slice(1) ? null : 'p' + tr.dataset.k.slice(1); pintar(); }; });
-    };
+    const filasClic = () => $$('tr[data-kv]').forEach((tr) => { tr.onclick = (ev) => { if (ev.target.closest('select')) return; E.abierto = E.abierto === tr.dataset.kv ? null : tr.dataset.kv; pintar(); }; });
+    filasClic();
+    const b = $('#buscar'); if (b) b.oninput = () => { E.buscar = b.value; E.abierto = null; $('#tablaPersonas').innerHTML = tablaFilas(filtrarFilas(filasPersonas(calc()))); filasClic(); enlazarAsignar(); };
+    const va = $('#verAnon'); if (va) va.onchange = () => { E.verAnon = va.checked; E.abierto = null; pintar(); };
     [['fMazo', 'fMazo'], ['fTema', 'fTema'], ['fTirada', 'fTirada'], ['fPregunta', 'fPregunta'], ['mazoMapa', 'mazoMapa']].forEach(([id, k]) => { const s = $('#' + id); if (s) s.onchange = () => { E[k] = s.value; pintar(); }; });
-    $$('[data-asig]').forEach((sel) => { sel.onchange = async () => {
+    enlazarAsignar();
+    function enlazarAsignar() { $$('[data-asig]').forEach((sel) => { sel.onchange = async () => {
       const uid = sel.dataset.asig, nuevo = sel.value, p = E.datos.personas.find((x) => x.uid === uid); sel.disabled = true;
       try { await D.asignarPerfil(uid, nuevo); if (p) p.perfil = nuevo; aviso('Perfil actualizado a ' + (PERFILES.find((x) => x[0] === nuevo) || [])[1] + '.'); }
       catch (e) { sel.value = (p && p.perfil) || 'free'; aviso('No se pudo cambiar el perfil.'); }
-      sel.disabled = false; }; });
+      sel.disabled = false; }; }); }
     // perfiles
     $$('[id^="pb_"]').forEach((i) => { i.onchange = () => {
       const [, k, tipo, x] = i.id.split('_');
@@ -423,7 +452,7 @@
       try { await D.guardarPerfiles(E.editP, E.usuario.email); E.perfiles = Object.assign(perfEdit(E.editP), { actualizado: new Date(), por: E.usuario.email }); aviso('Publicado. Las visitas lo verán en su próxima carga.'); pintar(); }
       catch (e) { gp.disabled = false; aviso('No se pudo guardar. Revisa tu conexión y tu acceso.'); }
     };
-    const cp = $('#csvPersonas'); if (cp) cp.onclick = () => descargar('arcana-personas.csv', [['nombre', 'correo', 'perfil', 'alta', 'ultimo_acceso', 'accesos']].concat(E.datos.personas.map((p) => [p.nombre, p.email, p.perfil || 'free', p.creado ? p.creado.toISOString() : '', p.ultimoAcceso ? p.ultimoAcceso.toISOString() : '', p.accesos])));
+    const cp = $('#csvPersonas'); if (cp) cp.onclick = () => descargar('arcana-personas.csv', [['persona', 'tipo', 'correo', 'perfil', 'entro', 'ultimo', 'visitas', 'lecturas', 'equipo']].concat(filtrarFilas(filasPersonas(calc())).map((f) => [f.nombre, f.tipo, f.correo === '—' ? '' : f.correo, f.tipo === 'cuenta' ? (f.p.perfil || 'free') : '', f.entro ? new Date(f.entro).toISOString() : '', f.ultimo ? new Date(f.ultimo).toISOString() : '', f.visitas, f.lect, nombreEquipo(f.disp)])));
     const cl = $('#csvLecturas'); if (cl) cl.onclick = () => descargar('arcana-lecturas.csv', [['fecha', 'mazo', 'tema', 'tirada', 'cartas', 'con_pregunta', 'equipo']].concat(E.datos.lecturas.map((l) => [l.fecha ? l.fecha.toISOString() : '', l.mazo, l.tema, l.tirada, (l.cartas || []).map(nombreCarta).join(' | '), l.pregunta ? 'si' : 'no', l.disp])));
     // funciones
     const map = { f_cartaDelDia: (v) => { E.edit.cartaDelDia = v; }, f_desfile: (v) => { E.edit.desfile = v; }, f_planes: (v) => { E.edit.planes = v; }, f_cuentas: (v) => { E.edit.cuentas = v; }, f_medicion: (v) => { E.edit.medicion = v; }, f_aviso: (v) => { E.edit.aviso.activo = v; } };
