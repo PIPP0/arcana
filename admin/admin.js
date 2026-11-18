@@ -76,7 +76,7 @@
       async leerFunciones() { const s = await fs.getDoc(fs.doc(db, 'config', 'funciones')); if (!s.exists()) return null; const d = s.data(); return Object.assign({}, d, { actualizado: lee(d.actualizado) }); },
       async leerPerfiles() { const s = await fs.getDoc(fs.doc(db, 'config', 'perfiles')); if (!s.exists()) return null; const d = s.data(); return Object.assign({}, d, { actualizado: lee(d.actualizado) }); },
       guardarPerfiles(p, email) { return fs.setDoc(fs.doc(db, 'config', 'perfiles'), Object.assign({}, p, { actualizado: fs.serverTimestamp(), por: email })); },
-      asignarPerfil(uid, perfil) { return fs.updateDoc(fs.doc(db, 'personas', uid), { perfil }); },
+      asignarPerfil(uid, perfil) { return fs.updateDoc(fs.doc(db, 'personas', uid), { perfil, porPago: false }); },
       guardarFunciones(f, email) { return fs.setDoc(fs.doc(db, 'config', 'funciones'), Object.assign({}, f, { actualizado: fs.serverTimestamp(), por: email })); },
       async contar() {
         const c = async (col) => (await fs.getCountFromServer(fs.collection(db, col))).data().count;
@@ -253,7 +253,7 @@
     if (!P.length) return vacio(E.buscar ? 'Sin resultados' : 'Todavía no hay cuentas', E.buscar ? 'Prueba con otro nombre o correo.' : 'Aparecerán cuando alguien entre o cree su cuenta en Mi espacio.');
     return `<div class="tabla-c"><table><thead><tr><th>Persona</th><th>Correo</th><th>Perfil</th><th>Alta</th><th>Último acceso</th><th>Accesos</th></tr></thead><tbody>${P.map((p) => {
       const ab = E.abierto === 'p' + p.uid;
-      return `<tr data-k="p${esc(p.uid)}"><td>${esc(p.nombre || 'Sin nombre')}</td><td>${esc(p.email)}</td><td>${selPerfil(p)}</td><td>${fecha(p.creado)}</td><td>${hora(p.ultimoAcceso)}</td><td>${n0(p.accesos || 0)}</td></tr>${ab ? `<tr class="det"><td colspan="6"><dl><div><dt>Identificador</dt><dd>${esc(p.uid)}</dd></div><div><dt>Alta</dt><dd>${hora(p.creado)}</dd></div><div><dt>Último acceso</dt><dd>${hora(p.ultimoAcceso)}</dd></div><div><dt>Accesos</dt><dd>${n0(p.accesos || 0)}</dd></div></dl></td></tr>` : ''}`; }).join('')}</tbody></table></div>`;
+      return `<tr data-k="p${esc(p.uid)}"><td>${esc(p.nombre || 'Sin nombre')}</td><td>${esc(p.email)}</td><td>${selPerfil(p)}${p.porPago ? ' <span class="chip ok" title="Suscripción activa con Mercado Pago">pagado</span>' : ''}</td><td>${fecha(p.creado)}</td><td>${hora(p.ultimoAcceso)}</td><td>${n0(p.accesos || 0)}</td></tr>${ab ? `<tr class="det"><td colspan="6"><dl><div><dt>Identificador</dt><dd>${esc(p.uid)}</dd></div><div><dt>Alta</dt><dd>${hora(p.creado)}</dd></div><div><dt>Último acceso</dt><dd>${hora(p.ultimoAcceso)}</dd></div><div><dt>Accesos</dt><dd>${n0(p.accesos || 0)}</dd></div></dl></td></tr>` : ''}`; }).join('')}</tbody></table></div>`;
   }
 
   function vLecturas() {

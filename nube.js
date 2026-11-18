@@ -139,7 +139,7 @@
     try {
       const s = await c.fs.getDoc(c.fs.doc(c.db, 'personas', u.uid));
       const p = s.exists() && PERFILES.includes(s.data().perfil) ? s.data().perfil : 'free';
-      if (s.exists()) { const d = s.data(); ficha = { nombre: d.nombre || '', avatar: d.avatar || null, hoy: d.hoy && typeof d.hoy === 'object' ? d.hoy : null, accesos: d.accesos || 0, creado: d.creado && d.creado.toDate ? d.creado.toDate() : null }; avisarU(); }
+      if (s.exists()) { const d = s.data(); ficha = { nombre: d.nombre || '', avatar: d.avatar || null, hoy: d.hoy && typeof d.hoy === 'object' ? d.hoy : null, porPago: d.porPago === true, accesos: d.accesos || 0, creado: d.creado && d.creado.toDate ? d.creado.toDate() : null }; avisarU(); }
       if (p !== miPerfil) { miPerfil = p; avisarF(); }
     } catch (e) { /* sin ficha o sin red: se queda en Free */ }
   }
@@ -190,6 +190,26 @@
       const c = await conectar(); if (!c) throw new Error('sin-nube');
       await c.au.sendPasswordResetEmail(c.auth, correo);
     },
+    pagosActivos: () => !!window.ARCANA_PAGOS,
+    /* Pide al servidor de pagos el enlace de Mercado Pago para el plan elegido. Devuelve la dirección a la que ir a pagar. */
+    async suscribir(tier) {
+      const base = window.ARCANA_PAGOS; if (!base) throw new Error('pagos-no-disponibles');
+      const c = await conectar(); const u = c && c.auth.currentUser; if (!u || u.isAnonymous) throw new Error('sin-sesion');
+      const r = await fetch(base.replace(/\/$/, '') + '/crear-suscripcion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tier, idToken: await u.getIdToken() }) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.init_point) throw new Error(d.error || 'error-pago');
+      return d.init_point;
+    },
+    async cancelarSuscripcion() {
+      const base = window.ARCANA_PAGOS; if (!base) throw new Error('pagos-no-disponibles');
+      const c = await conectar(); const u = c && c.auth.currentUser; if (!u || u.isAnonymous) throw new Error('sin-sesion');
+      const r = await fetch(base.replace(/\/$/, '') + '/cancelar-suscripcion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken: await u.getIdToken() }) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || 'error-cancelar');
+      await leerPerfil(u, c);
+    },
+    /* Vuelve a leer el plan de la cuenta (después de pagar, el servidor lo cambia unos segundos más tarde). */
+    async refrescarPerfil() { const c = await conectar(); const u = c && c.auth.currentUser; if (u && !u.isAnonymous) await leerPerfil(u, c); return miPerfil; },
     async guardarFicha(cambios) {
       const c = await conectar(); const u = c && c.auth.currentUser; if (!u || u.isAnonymous) throw new Error('sin-sesion');
       const datos = {};

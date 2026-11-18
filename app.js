@@ -143,10 +143,10 @@
   }
 
   /* ---------- confirmar antes de borrar (modal) ---------- */
-  function confirmarModal({ titulo, texto, boton = 'Borrar' }) {
+  function confirmarModal({ titulo, texto, boton = 'Borrar', tono = 'peligro' }) {
     return new Promise((resolver) => {
       const d = $('#modalConfirmar'); if (!d || !d.showModal) { resolver(window.confirm(`${titulo}\n\n${texto}`)); return; }
-      $('#mcTitulo').textContent = titulo; $('#mcTexto').textContent = texto; $('#mcAceptar').textContent = boton;
+      $('#mcTitulo').textContent = titulo; $('#mcTexto').textContent = texto; $('#mcAceptar').textContent = boton; $('#mcAceptar').className = 'btn ' + (tono === 'normal' ? 'primario' : 'peligro');
       let hecho = false;
       const fin = (v) => { if (hecho) return; hecho = true; limpiar(); if (d.open) d.close(); resolver(v); };
       const si = () => fin(true), no = () => fin(false), fuera = (e) => { if (e.target === d) fin(false); }, cancel = (e) => { e.preventDefault(); fin(false); };
@@ -227,7 +227,7 @@
     const en = e.target.closest('[data-entrar]'); if (en) { irEntrar('Entra o crea tu cuenta gratis: guarda tus lecturas, tu calendario y tu avatar.'); return; }
     const pl = e.target.closest('[data-planes]'); if (pl) { irAPlanes(); return; }
     const sus = e.target.closest('[data-suscribir]');
-    if (sus) { if (esInvitado()) irEntrar('Primero crea tu cuenta gratis; después te suscribes. Los cobros se activan muy pronto.'); else { ir('espacio'); aviso('Crea tu cuenta y deja todo listo: los cobros se activan muy pronto.'); } return; }
+    if (sus) { if (esInvitado()) irEntrar('Primero crea tu cuenta gratis; después te suscribes.'); else iniciarPago(sus.dataset.suscribir, sus); return; }
     const b = e.target.closest('[data-ir]');
     if (b) ir(b.dataset.ir);
   });
@@ -656,6 +656,35 @@
     return h;
   }
 
+  /* ---------- pago con Mercado Pago ---------- */
+  async function iniciarPago(tier, boton) {
+    if (!window.Nube.pagosActivos()) { aviso('Los cobros se activan muy pronto. Tu cuenta ya queda lista para suscribirte.'); return; }
+    const T = window.Nube.todosPerfiles(), P = T[tier] || {};
+    const ok = await confirmarModal({ titulo: `Suscribirte a ${NOMBRE_PERFIL[tier]}`, texto: `Vas a pasar a Mercado Pago para pagar ${P.precio || ''} ${P.periodo || 'al mes'}. Se renueva cada mes y puedes cancelar cuando quieras desde Mi perfil.`, boton: 'Ir a pagar', tono: 'normal' });
+    if (!ok) return;
+    const txt = boton && boton.textContent; if (boton) { boton.disabled = true; boton.textContent = 'Abriendo Mercado Pago…'; }
+    try { location.href = await window.Nube.suscribir(tier); }
+    catch (e) {
+      if (boton) { boton.disabled = false; boton.textContent = txt; }
+      aviso(e && e.message === 'sin-sesion' ? 'Entra a tu cuenta para suscribirte.' : (e && e.message && !/^error|^pagos/.test(e.message) ? e.message : 'No se pudo abrir el pago. Intenta de nuevo en un momento.'));
+    }
+  }
+  /* al volver de Mercado Pago: el servidor cambia el plan unos segundos después del pago */
+  (function () {
+    const q = new URLSearchParams(location.search); if (q.get('pago') !== 'ok') return;
+    try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) { /* sigue igual */ }
+    aviso('Gracias. Estamos confirmando tu pago…');
+    let n = 0;
+    const t = setInterval(async () => {
+      n++;
+      try {
+        const p = await window.Nube.refrescarPerfil();
+        if (p === 'full' || p === 'premium') { clearInterval(t); sfx.entrega(true); aviso(`¡Listo! Ahora tienes el plan ${NOMBRE_PERFIL[p]}.`); return; }
+      } catch (e) { /* se reintenta */ }
+      if (n >= 18) { clearInterval(t); aviso('Tu pago puede tardar unos minutos en confirmarse. Revisa tu perfil en un rato.'); }
+    }, 4000);
+  })();
+
   /* Sin plan que guarde lecturas: se invita a entrar o a suscribirse, en vez de dejar un hueco. */
   function persuadirGuardar() {
     const entrar = desbloqueo((P) => P.diario !== false) === 'entrar';
@@ -978,7 +1007,8 @@
         <div class="fila-n"><input id="pNombre" type="text" maxlength="80" value="${esc(f.nombre || u.nombre || '')}" autocomplete="name"><button type="button" class="btn chico primario" id="btnGuardarNombre">Guardar</button></div>
         <dl class="datos-p"><div><dt>Correo</dt><dd>${esc(u.email)}</dd></div><div><dt>Ingresas con</dt><dd>${u.proveedor === 'correo' ? 'Correo y contraseña' : 'Google'}</dd></div><div><dt>Miembro desde</dt><dd>${f.creado ? fmtDesde.format(f.creado) : '—'}</dd></div><div><dt>Accesos</dt><dd>${f.accesos || 0}</dd></div></dl></section>
       <section class="tarjeta-p"><h3>Tu plan</h3><p><b>${NOMBRE_PERFIL[p]}</b> · ${resumenPerfil()}.</p><p>${cupo || 'Lecturas sin límite.'}</p>
-        ${p !== 'premium' ? '<div class="acciones"><button type="button" class="btn primario chico" data-planes="1">Descubre Premium →</button></div>' : ''}</section>
+        ${f.porPago ? '<p>Suscripción activa con Mercado Pago. Se renueva cada mes.</p>' : ''}
+        <div class="acciones">${p !== 'premium' ? '<button type="button" class="btn primario chico" data-planes="1">Descubre Premium →</button>' : ''}${f.porPago ? '<button type="button" class="btn chico" id="btnCancelarSus">Cancelar suscripción</button>' : ''}</div></section>
       <section class="tarjeta-p"><h3>Tu espacio</h3><p>${lect ? `${lect} ${lect === 1 ? 'lectura guardada' : 'lecturas guardadas'} en este dispositivo.` : 'Todavía no guardas ninguna lectura en este dispositivo.'}</p>
         <div class="acciones"><button type="button" class="btn chico" data-ir="espacio">Ver mi calendario y mis lecturas</button></div></section>
       <div class="acciones fin-p"><button type="button" class="btn" id="btnSalir">Salir de mi cuenta</button><button type="button" class="btn chico" id="btnBorrarFicha">Borrar mi ficha</button></div>`;
@@ -1047,6 +1077,10 @@
           const c = ($('#cCorreo').value || '').trim();
           if (!c) { msgCuenta('Escribe tu correo arriba y vuelve a pulsar.'); return; }
           await window.Nube.recuperarClave(c); msgCuenta('Si ese correo tiene cuenta, te enviamos un enlace para cambiar la contraseña. Revisa también el spam.', true);
+        } else if (id === 'btnCancelarSus') {
+          const ok = await confirmarModal({ titulo: '¿Cancelar tu suscripción?', texto: 'No se te cobrará el próximo mes y tu cuenta vuelve al plan Free ahora. Puedes suscribirte de nuevo cuando quieras.', boton: 'Cancelar suscripción' });
+          if (!ok) return;
+          await window.Nube.cancelarSuscripcion(); pintarCuenta(); aviso('Suscripción cancelada. Tu cuenta vuelve a Free.');
         } else if (id === 'btnGuardarNombre') {
           const n = ($('#pNombre').value || '').trim();
           await window.Nube.guardarFicha({ nombre: n }); if (document.activeElement) document.activeElement.blur(); pintarCuenta(); aviso('Nombre guardado.');
@@ -1058,6 +1092,7 @@
       } catch (err) {
         if (id === 'btnOlvide') msgCuenta(ERR_CUENTA[err && err.code] || 'No se pudo enviar. Intenta de nuevo.');
         else if (id === 'btnGuardarNombre') aviso('No se pudo guardar el nombre. Intenta de nuevo.');
+        else if (id === 'btnCancelarSus') aviso('No se pudo cancelar. Intenta de nuevo o escríbenos.');
         else aviso(ERR_CUENTA[err && err.code] || 'No se pudo completar. Intenta de nuevo.');
       }
     });
@@ -1086,6 +1121,7 @@
     const caja = $('#planesG'); if (!caja) return;
     const T = window.Nube.todosPerfiles(), actual = window.Nube.usuario() ? window.Nube.perfil() : null;
     const inv = $('#planesInv'); if (inv) inv.hidden = !esInvitado();
+    const nota = $('#planesNota'); if (nota) nota.textContent = window.Nube.pagosActivos() ? 'Pagos con Mercado Pago, tarjeta o transferencia. Se renuevan cada mes y puedes cancelar cuando quieras desde Mi perfil. Precios en pesos chilenos.' : 'Los cobros se activan muy pronto: crea tu cuenta hoy y quedarás lista o listo para suscribirte cuando abran. Precios en pesos chilenos.';
     caja.innerHTML = ['free', 'full', 'premium'].map((k) => {
       const P = T[k] || {}, X = PLAN_TEXTO[k];
       const li = (ok, t) => `<li${ok ? '' : ' class="no"'}>${t}</li>`;

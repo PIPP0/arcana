@@ -85,6 +85,13 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // Pagos con Mercado Pago: los escribe solo el servidor de pagos (Worker de Cloudflare, que no pasa por estas reglas).
+    // El admin los puede leer; nadie puede escribirlos desde el sitio.
+    match /pagos/{id} {
+      allow read: if esAdmin();
+      allow write: if false;
+    }
+
     // Personas que entraron con Google (opcional). Cada una ve y borra la suya; el admin las lee.
     match /personas/{uid} {
       allow read: if (signedIn() && request.auth.uid == uid) || esAdmin();
@@ -96,9 +103,11 @@ service cloud.firestore {
         && request.resource.data.creado == request.time && request.resource.data.ultimoAcceso == request.time
         && request.resource.data.accesos == 1;
       // El perfil (Free/Full/Premium) lo asigna solo el admin; la persona no puede cambiárselo.
+      // Al asignarlo a mano, el admin deja porPago en false: un plan manual no lo baja ningún aviso de pago.
       allow update: if esAdmin()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['perfil'])
-        && request.resource.data.perfil in ['free', 'full', 'premium'];
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['perfil', 'porPago'])
+        && request.resource.data.perfil in ['free', 'full', 'premium']
+        && (!('porPago' in request.resource.data) || request.resource.data.porPago == false);
       // Su propio nombre y avatar (un avatar entre cinco, o ninguno).
       allow update: if signedIn() && request.auth.uid == uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nombre', 'avatar', 'hoy'])
@@ -108,8 +117,10 @@ service cloud.firestore {
             && request.resource.data.hoy.dia is string && request.resource.data.hoy.dia.size() == 10
             && request.resource.data.hoy.carta is int && request.resource.data.hoy.carta >= 0 && request.resource.data.hoy.carta <= 77));
       allow update: if signedIn() && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(['nombre', 'email', 'creado', 'ultimoAcceso', 'accesos', 'perfil', 'avatar', 'hoy'])
+        && request.resource.data.keys().hasOnly(['nombre', 'email', 'creado', 'ultimoAcceso', 'accesos', 'perfil', 'avatar', 'hoy', 'porPago', 'mpId'])
         && request.resource.data.get('perfil', null) == resource.data.get('perfil', null)
+        && request.resource.data.get('porPago', null) == resource.data.get('porPago', null)
+        && request.resource.data.get('mpId', null) == resource.data.get('mpId', null)
         && request.resource.data.get('avatar', null) == resource.data.get('avatar', null)
         && request.resource.data.get('hoy', null) == resource.data.get('hoy', null)
         && request.resource.data.email == resource.data.email
