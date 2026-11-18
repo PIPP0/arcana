@@ -244,7 +244,18 @@
           roce(t, 0.26, 600, 4200, 0.07, 0.7, 0.2);
           voz(nota, t + 0.4, 2.6, 0.09, CAMPANA, 0.006);
           voz(nota * 4, t + 0.42, 1.2, 0.025, CRISTAL, 0.004, 0.9);
-          if (ultima) { voz(NOTA.la3, t + 0.6, 4.2, 0.08, CUENCO, 0.03); voz(NOTA.mi5, t + 0.72, 3.2, 0.05, CAMPANA); voz(NOTA.do6, t + 0.84, 3.2, 0.04, CAMPANA); }
+        })();
+      },
+      /* entrega de la lectura: marea que sube, bajo profundo, cascada de campanas y un acorde que se asienta */
+      entrega(suave) {
+        seguro((t) => {
+          const v = suave ? 0.6 : 1;
+          roce(t, 1.5, 180, 6500, 0.05 * v, 0.4, 0.55);
+          voz(NOTA.la3 / 2, t + 0.1, 7.5, 0.12 * v, CUENCO, 0.6);
+          voz(NOTA.la3, t + 0.35, 6.5, 0.09 * v, CUENCO, 0.7);
+          [NOTA.la4, NOTA.do5, NOTA.re5, NOTA.mi5, NOTA.sol5, NOTA.la5, NOTA.do6, NOTA.mi6].forEach((f, i) => voz(f, t + 1.0 + i * 0.11, 3.4, 0.05 * v, CAMPANA, 0.006, 0.9));
+          voz(NOTA.la4, t + 2.1, 5.5, 0.06 * v, CAMPANA, 0.01, 0.9); voz(NOTA.mi5, t + 2.15, 5.5, 0.045 * v, CAMPANA, 0.01, 0.9); voz(NOTA.do6, t + 2.2, 5.5, 0.04 * v, CAMPANA, 0.01, 0.9);
+          voz(NOTA.mi6 * 2, t + 2.35, 3.2, 0.02 * v, CRISTAL, 0.004, 1);
         })();
       },
       /* algo bloqueado: un «toc» grave y amable, sin castigar */
@@ -411,7 +422,7 @@
     }
     btn.addEventListener('click', () => {
       if (btn.classList.contains('vista-carta')) { ampliar(g.carta, 'rws'); return; }
-      sfx.revelar(1, true); mostrar(); window.Nube.cartaHoy();
+      sfx.revelar(1); setTimeout(() => sfx.entrega(true), 650); mostrar(); window.Nube.cartaHoy();
       if (window.Nube.usuario()) guardarVista(true);
     });
     function guardarVista(v) { g.vista = v; try { localStorage.setItem('arcana.hoy.v1', JSON.stringify(g)); } catch (e) { /* sigue igual */ } }
@@ -659,7 +670,7 @@
         <button type="button" class="btn" id="btnOtra">Hacer otra lectura</button>
       </div></section>`;
     const el = $('#interpretacion'); el.innerHTML = h; el.hidden = false;
-    contarLectura(); pintarCupo();
+    sfx.entrega(); contarLectura(); pintarCupo();
     window.Nube.lectura({ mazo: mz, tema: estado.tema, tirada: estado.tirada.id, cartas: ids, pregunta: !!estado.pregunta });
   }
 
