@@ -272,7 +272,7 @@
     ['#vitrina', '#listaMazos'].forEach((id) => { const el = $(id); if (el) { el.classList.toggle('pocos', pocos); el.style.setProperty('--n', Math.max(1, n)); } });
   }
   const pintarVitrina = () => { $('#vitrina').innerHTML = activos().map((m) =>
-    `<li class="vit tema-${m.id}"><span class="abanico" aria-hidden="true">${m.muestra.slice(0, 3).map((i) => carta(cara(i, m.id, false), m.id)).join('')}</span>
+    `<li class="vit tema-${m.id}${mazoIncluido(m.id) ? '' : ' bloq'}"><span class="abanico" aria-hidden="true">${m.muestra.slice(0, 3).map((i) => carta(cara(i, m.id, false), m.id)).join('')}</span>
       <p class="precio">${m.anio} · ${m.lugar}</p><h3>${m.nombre}</h3><p>${m.tecnica}. 78 cartas.</p>
       ${mazoIncluido(m.id) ? '' : `<button type="button" class="suscr" data-planes="1"><span class="sello-p">${bloqueo((P) => (P.mazos || {})[m.id] !== false)}</span>Descúbrelo suscribiéndote →</button>`}</li>`).join('');
     ajustarTextosMazos(); };
