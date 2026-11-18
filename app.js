@@ -142,24 +142,122 @@
     clearTimeout(tAviso); tAviso = setTimeout(() => el.classList.remove('ver'), 2600);
   }
 
-  /* ---------- sonido (apagado por defecto) ---------- */
-  let sonido = false, actx = null;
-  function roce(dur = 0.16, vol = 0.05) {
-    if (!sonido) return;
-    try {
-      actx = actx || new (window.AudioContext || window.webkitAudioContext)();
-      const n = Math.floor(actx.sampleRate * dur), b = actx.createBuffer(1, n, actx.sampleRate), d = b.getChannelData(0);
-      for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 2);
-      const s = actx.createBufferSource(), fl = actx.createBiquadFilter(), g = actx.createGain();
-      fl.type = 'bandpass'; fl.frequency.value = 2400; fl.Q.value = 0.7; g.gain.value = vol;
-      s.buffer = b; s.connect(fl); fl.connect(g); g.connect(actx.destination); s.start();
-    } catch (e) { /* sin audio: la lectura sigue igual */ }
-  }
+  /* ---------- sonido (apagado por defecto) ----------
+     Todo se sintetiza en el navegador (sin archivos): campanas y cuencos en escala pentatónica con
+     reverberación, roces de papel para las cartas y un fondo muy suave. Cada interacción tiene su sonido. */
+  let sonido = false;
+  const sfx = (() => {
+    let ctx = null, seco = null, mojado = null, pad = null;
+    const NOTA = { la3: 220, mi4: 329.63, la4: 440, do5: 523.25, re5: 587.33, mi5: 659.25, sol5: 783.99, la5: 880, do6: 1046.5, mi6: 1318.5 };
+    const azar = (a, b) => a + Math.random() * (b - a);
+    function iniciar() {
+      if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return ctx; }
+      ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -20; comp.ratio.value = 4; comp.connect(ctx.destination);
+      seco = ctx.createGain(); seco.connect(comp);
+      const L = Math.floor(ctx.sampleRate * 3), ir = ctx.createBuffer(2, L, ctx.sampleRate);
+      for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < L; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / L, 2.8); }
+      const rev = ctx.createConvolver(); rev.buffer = ir; mojado = ctx.createGain(); mojado.gain.value = 0.7; mojado.connect(rev); rev.connect(comp);
+      return ctx;
+    }
+    /* campana o cuenco: parciales sinusoidales con caída suave y un poco de eco */
+    function voz(freq, t, dur, vol, parciales, ataque = 0.008, eco = 0.7) {
+      parciales.forEach(([r, g, dec]) => {
+        const o = ctx.createOscillator(), a = ctx.createGain(), e = ctx.createGain();
+        o.type = 'sine'; o.frequency.value = freq * r;
+        const d = Math.max(0.15, dur * (dec || 1));
+        a.gain.setValueAtTime(0.0001, t); a.gain.linearRampToValueAtTime(vol * g, t + ataque); a.gain.exponentialRampToValueAtTime(0.0001, t + d);
+        e.gain.value = eco; o.connect(a); a.connect(seco); a.connect(e); e.connect(mojado);
+        o.start(t); o.stop(t + d + 0.05);
+      });
+    }
+    const CAMPANA = [[1, 1, 1], [2.76, 0.32, 0.55], [5.4, 0.12, 0.3], [8.9, 0.05, 0.18]];
+    const CUENCO = [[1, 1, 1], [2.01, 0.5, 0.8], [3.0, 0.22, 0.6], [4.2, 0.1, 0.4]];
+    const CRISTAL = [[1, 1, 0.7], [2, 0.22, 0.35]];
+    /* roce de papel: ruido filtrado con barrido de frecuencia */
+    function roce(t, dur, f0, f1, vol, q = 0.9, eco = 0.15) {
+      const n = Math.floor(ctx.sampleRate * dur), b = ctx.createBuffer(1, n, ctx.sampleRate), d = b.getChannelData(0);
+      for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 1.6);
+      const s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain(), e = ctx.createGain();
+      f.type = 'bandpass'; f.Q.value = q; f.frequency.setValueAtTime(f0, t); f.frequency.exponentialRampToValueAtTime(Math.max(60, f1), t + dur);
+      g.gain.value = vol; e.gain.value = eco; s.buffer = b; s.connect(f); f.connect(g); g.connect(seco); g.connect(e); e.connect(mojado);
+      s.start(t);
+    }
+    const listo = () => { if (!sonido) return false; try { iniciar(); return true; } catch (e) { return false; } };
+    const seguro = (fn) => () => { if (!listo()) return; try { fn(ctx.currentTime + 0.01); } catch (e) { /* sin audio: la lectura sigue igual */ } };
+
+    function ambiente(enc) {
+      if (!ctx) return;
+      const t = ctx.currentTime;
+      if (enc) {
+        if (pad) return;
+        const g = ctx.createGain(), f = ctx.createBiquadFilter(), lfo = ctx.createOscillator(), lg = ctx.createGain();
+        f.type = 'lowpass'; f.frequency.value = 520; lfo.frequency.value = 0.06; lg.gain.value = 180; lfo.connect(lg); lg.connect(f.frequency);
+        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.05, t + 4);
+        const osc = [[110, 'sine', 1], [164.81, 'sine', 0.55], [220.4, 'triangle', 0.3], [329.7, 'sine', 0.16]].map(([fr, ty, v]) => {
+          const o = ctx.createOscillator(), og = ctx.createGain(); o.type = ty; o.frequency.value = fr; og.gain.value = v; o.connect(og); og.connect(f); o.start(t); return o;
+        });
+        f.connect(g); g.connect(seco); g.connect(mojado); lfo.start(t);
+        pad = { g, osc: osc.concat(lfo) };
+      } else if (pad) {
+        const p = pad; pad = null;
+        p.g.gain.cancelScheduledValues(t); p.g.gain.setValueAtTime(Math.max(0.0001, p.g.gain.value), t); p.g.gain.exponentialRampToValueAtTime(0.0001, t + 0.8);
+        setTimeout(() => p.osc.forEach((o) => { try { o.stop(); } catch (e) { /* ya parado */ } }), 1000);
+      }
+    }
+    document.addEventListener('visibilitychange', () => { if (ctx) { if (document.hidden) ctx.suspend(); else if (sonido) ctx.resume(); } });
+
+    return {
+      /* al activar el sonido: tres notas ascendentes y empieza el fondo */
+      encender: seguro((t) => { [NOTA.la4, NOTA.mi5, NOTA.la5].forEach((f, i) => voz(f, t + i * 0.16, 2.4, 0.07, CAMPANA)); ambiente(true); }),
+      apagar() { ambiente(false); },
+      /* un toque suave: temas, opciones */
+      tick: seguro((t) => { voz(NOTA.mi6, t, 0.5, 0.045, CRISTAL, 0.004, 0.5); roce(t, 0.05, 3200, 1800, 0.02); }),
+      /* elegir mazo: se abre la caja, roce largo de cartas y un cuenco grave */
+      mazo: seguro((t) => { roce(t, 0.32, 1200, 3200, 0.05, 0.6); roce(t + 0.12, 0.2, 2600, 900, 0.035); voz(NOTA.la3, t + 0.05, 2.6, 0.09, CUENCO); }),
+      tirada: seguro((t) => { voz(NOTA.re5, t, 1.4, 0.06, CAMPANA); roce(t, 0.08, 2400, 1400, 0.025); }),
+      /* barajar: aleteo de cartas que se acelera y se apaga, como el movimiento de la pila (≈1,2 s) */
+      barajar: seguro((t) => {
+        roce(t, 1.0, 260, 900, 0.03, 0.5, 0.3);
+        for (let i = 0; i < 18; i++) {
+          const dt = i * 0.052 + azar(0, 0.014);
+          roce(t + dt, azar(0.03, 0.055), azar(2200, 4200), azar(1200, 2000), 0.055 * (1 - i * 0.025), 1.2, 0.1);
+        }
+        voz(NOTA.la3 / 2, t + 0.95, 1.2, 0.05, CUENCO, 0.05);
+      }),
+      /* repartir: las cartas se abren en abanico con un barrido y un destello */
+      repartir: seguro((t) => {
+        for (let i = 0; i < 12; i++) roce(t + i * 0.035, 0.05, 1800 + i * 260, 3600 + i * 200, 0.04, 1.1, 0.2);
+        roce(t, 0.5, 500, 5200, 0.035, 0.5, 0.35);
+        voz(NOTA.mi6, t + 0.38, 1.8, 0.04, CAMPANA); voz(NOTA.sol5, t + 0.46, 1.8, 0.04, CAMPANA);
+      }),
+      /* elegir una carta: nota que sube con cada carta (1.ª, 2.ª, 3.ª) */
+      elegir(n) { const nota = [NOTA.mi5, NOTA.sol5, NOTA.la5][Math.min(n, 2)]; seguro((t) => { roce(t, 0.06, 2800, 1600, 0.03); voz(nota, t, 1.6, 0.075, CAMPANA); })(); },
+      soltar: seguro((t) => { voz(NOTA.re5, t, 0.5, 0.04, CRISTAL, 0.006, 0.3); }),
+      /* confirmar: cuenco tibetano largo con su quinta */
+      confirmar: seguro((t) => { voz(NOTA.la3, t, 4.2, 0.13, CUENCO, 0.02); voz(NOTA.mi4, t + 0.14, 3.6, 0.08, CUENCO, 0.02); roce(t, 0.5, 400, 2400, 0.02, 0.5, 0.4); }),
+      /* dar vuelta una carta: giro de papel y, a mitad del giro, la campana de su posición.
+         La última carta cierra con un acorde abierto. */
+      revelar(i, ultima) {
+        const nota = [NOTA.la4, NOTA.re5, NOTA.sol5][i % 3];
+        seguro((t) => {
+          roce(t, 0.26, 600, 4200, 0.07, 0.7, 0.2);
+          voz(nota, t + 0.4, 2.6, 0.09, CAMPANA, 0.006);
+          voz(nota * 4, t + 0.42, 1.2, 0.025, CRISTAL, 0.004, 0.9);
+          if (ultima) { voz(NOTA.la3, t + 0.6, 4.2, 0.08, CUENCO, 0.03); voz(NOTA.mi5, t + 0.72, 3.2, 0.05, CAMPANA); voz(NOTA.do6, t + 0.84, 3.2, 0.04, CAMPANA); }
+        })();
+      },
+      /* algo bloqueado: un «toc» grave y amable, sin castigar */
+      negado: seguro((t) => { voz(196, t, 0.35, 0.07, [[1, 1, 1], [1.5, 0.3, 0.6]], 0.004, 0.25); }),
+      guardar: seguro((t) => { voz(NOTA.mi5, t, 1.4, 0.06, CAMPANA); voz(NOTA.la5, t + 0.13, 2.0, 0.06, CAMPANA); }),
+      paso: seguro((t) => { roce(t, 0.2, 500, 1800, 0.02, 0.6, 0.25); })
+    };
+  })();
   $('#btnSonido').addEventListener('click', (e) => {
     sonido = !sonido;
     e.currentTarget.setAttribute('aria-pressed', String(sonido));
     e.currentTarget.textContent = sonido ? 'Sonido: sí' : 'Sonido: no';
-    roce();
+    if (sonido) sfx.encender(); else sfx.apagar();
   });
 
   /* ---------- navegación ---------- */
@@ -313,7 +411,7 @@
     }
     btn.addEventListener('click', () => {
       if (btn.classList.contains('vista-carta')) { ampliar(g.carta, 'rws'); return; }
-      roce(0.22); mostrar(); window.Nube.cartaHoy();
+      sfx.revelar(1, true); mostrar(); window.Nube.cartaHoy();
       if (window.Nube.usuario()) guardarVista(true);
     });
     function guardarVista(v) { g.vista = v; try { localStorage.setItem('arcana.hoy.v1', JSON.stringify(g)); } catch (e) { /* sigue igual */ } }
@@ -330,7 +428,7 @@
     `<button type="button" class="tema-p" data-tema-ir="${id}"><img src="${src('rws', TEMA_IMG[id])}" alt="" loading="lazy" decoding="async"><span>${TEMAS.find((t) => t.id === id).nombre}</span></button>`).join('');
   $('#temasPortada').addEventListener('click', (e) => {
     const b = e.target.closest('[data-tema-ir]'); if (!b) return;
-    estado.tema = b.dataset.temaIr; pintarTemas(); ir('mazo');
+    estado.tema = b.dataset.temaIr; sfx.tick(); pintarTemas(); ir('mazo');
   });
 
   /* muestra de una lectura */
@@ -355,9 +453,9 @@
   pintarListaMazos();
   $('#listaMazos').addEventListener('click', (e) => {
     const b = e.target.closest('[data-mazo]'); if (!b) return;
-    if (b.dataset.bloq) { irAPlanes('Este mazo se abre con una suscripción. Mira los planes.'); return; }
-    if (cupoAgotado()) { aviso(textoCupo()); return; }
-    estado.mazo = b.dataset.mazo; roce(); ir('intencion');
+    if (b.dataset.bloq) { sfx.negado(); irAPlanes('Este mazo se abre con una suscripción. Mira los planes.'); return; }
+    if (cupoAgotado()) { sfx.negado(); aviso(textoCupo()); return; }
+    estado.mazo = b.dataset.mazo; sfx.mazo(); ir('intencion');
   });
 
   /* ---------- temas ---------- */
@@ -371,8 +469,8 @@
   pintarTemas();
   $('#listaTemas').addEventListener('click', (e) => {
     const b = e.target.closest('[data-tema]'); if (!b) return;
-    if (b.dataset.bloq) { irAPlanes('La pregunta libre se abre con una suscripción. Mira los planes.'); return; }
-    estado.tema = b.dataset.tema; pintarTemas(); $(`[data-tema="${estado.tema}"]`).focus();
+    if (b.dataset.bloq) { sfx.negado(); irAPlanes('La pregunta libre se abre con una suscripción. Mira los planes.'); return; }
+    estado.tema = b.dataset.tema; sfx.tick(); pintarTemas(); $(`[data-tema="${estado.tema}"]`).focus();
   });
   $('#listaTemas').addEventListener('keydown', (e) => {
     const TP = temasPermitidos(), i = TP.findIndex((t) => t.id === estado.tema);
@@ -404,9 +502,9 @@
   pintarTiradas();
   $('#listaTiradas').addEventListener('click', (e) => {
     const b = e.target.closest('[data-tirada]'); if (!b) return;
-    if (b.dataset.bloq) { irAPlanes('Esta tirada se abre con una suscripción. Mira los planes.'); return; }
-    if (cupoAgotado()) { aviso(textoCupo()); return; }
-    estado.tirada = TIRADAS.find((t) => t.id === b.dataset.tirada); ir('barajar');
+    if (b.dataset.bloq) { sfx.negado(); irAPlanes('Esta tirada se abre con una suscripción. Mira los planes.'); return; }
+    if (cupoAgotado()) { sfx.negado(); aviso(textoCupo()); return; }
+    sfx.tirada(); estado.tirada = TIRADAS.find((t) => t.id === b.dataset.tirada); ir('barajar');
   });
 
   /* ---------- barajar ---------- */
@@ -420,13 +518,13 @@
     $('#estadoBarajar').textContent = 'El mazo ya está mezclado al azar.';
   }
   function accionBarajar() {
-    barajar(); veces++; roce(0.35, 0.06);
+    barajar(); veces++; sfx.barajar();
     const p = $('#pila'); p.classList.remove('mezcla'); void p.offsetWidth; p.classList.add('mezcla');
     $('#estadoBarajar').textContent = veces === 1 ? 'Barajaste una vez.' : `Barajaste ${veces} veces.`;
   }
   $('#pila').addEventListener('click', accionBarajar);
   $('#btnBarajar').addEventListener('click', accionBarajar);
-  $('#btnRepartir').addEventListener('click', () => { pintarMesa(); ir('elegir'); roce(0.3); });
+  $('#btnRepartir').addEventListener('click', () => { pintarMesa(); ir('elegir'); sfx.repartir(); });
 
   /* ---------- elegir ---------- */
   function pintarMesa() {
@@ -454,13 +552,15 @@
   $('#mesa').addEventListener('click', (e) => {
     const b = e.target.closest('button[data-k]'); if (!b) return;
     const k = Number(b.dataset.k), i = estado.elegidas.indexOf(k), n = estado.tirada.pos.length;
-    if (i >= 0) estado.elegidas.splice(i, 1);
+    let sono = 'elegir';
+    if (i >= 0) { estado.elegidas.splice(i, 1); sono = 'soltar'; }
     else if (estado.elegidas.length < n) estado.elegidas.push(k);
     else if (n === 1) estado.elegidas = [k];
     else { aviso('Ya elegiste tus cartas. Toca una elegida para cambiarla.'); return; }
-    roce(0.1); actualizarElegir();
+    if (sono === 'elegir') sfx.elegir(estado.elegidas.indexOf(k)); else sfx.soltar();
+    actualizarElegir();
   });
-  $('#btnConfirmar').addEventListener('click', () => { pintarLectura(); ir('lectura'); });
+  $('#btnConfirmar').addEventListener('click', () => { sfx.confirmar(); pintarLectura(); ir('lectura'); });
 
   /* ---------- lectura ---------- */
   const cartasDeLectura = () => estado.elegidas.map((k) => estado.orden[k]);
@@ -488,7 +588,7 @@
     b.setAttribute('aria-label', `${estado.tirada.pos[i].nombre}: ${k.nombre}. Ampliar la carta`);
     $(`[data-n="${i}"]`).textContent = k.nombre;
     b.parentElement.classList.add('brilla');
-    roce(0.22);
+    sfx.revelar(i, estado.reveladas.size === ids.length);
     if (estado.reveladas.size === ids.length) {
       $('#accionesRevelar').hidden = true;
       $('#tituloLectura').textContent = 'Tu lectura';
@@ -580,7 +680,7 @@
       a.unshift({ id: estado.guardada, fecha: new Date().toISOString(), mazo: estado.mazo, tema: estado.tema, tirada: estado.tirada.id,
         cartas: cartasDeLectura(), pregunta: estado.pregunta, nota });
     }
-    if (escribir(a)) { aviso('Lectura guardada en tu espacio.'); e.target.textContent = 'Actualizar nota'; }
+    if (escribir(a)) { sfx.guardar(); aviso('Lectura guardada en tu espacio.'); e.target.textContent = 'Actualizar nota'; }
     else { estado.guardada = false; aviso('No se pudo guardar en este navegador.'); }
   });
 
