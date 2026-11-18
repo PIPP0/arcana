@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,500;1,6..96,400&family=Jost:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=29">
+<link rel="stylesheet" href="styles.css?v=32">
 </head>
 <body>
 <a class="salto" href="#contenido">Saltar al contenido</a>
@@ -217,8 +217,6 @@
   <section class="vista estrecha" id="v-espacio" hidden>
     <div class="cabecera"><button type="button" class="volver" data-ir="inicio">← Volver</button></div>
     <h2 tabindex="-1">Mi espacio</h2>
-    <p class="bajada">Tus lecturas guardadas viven solo en este dispositivo. Puedes borrarlas cuando quieras.</p>
-    <div class="cuenta" id="cuentaCaja" hidden><h3>Tu cuenta</h3><div id="cuentaEstado"></div></div>
     <section class="calendario" id="calendario" aria-labelledby="calTitulo">
       <div class="cal-cab">
         <h3 id="calTitulo">Calendario de tu carta del día</h3>
@@ -229,10 +227,14 @@
         </div>
       </div>
       <p class="cal-stats" id="calStats"></p>
+      <div class="cal-cuadro">
       <div class="cal-sem" aria-hidden="true"><span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span></div>
       <div class="cal-g" id="calGrid"></div>
+      </div>
       <div class="cal-det" id="calDet" aria-live="polite"></div>
     </section>
+    <p class="bajada" style="margin-top:22px">Tus lecturas guardadas viven solo en este dispositivo. Puedes borrarlas cuando quieras.</p>
+    <div class="cuenta" id="cuentaCaja" hidden><h3>Tu cuenta</h3><div id="cuentaEstado"></div></div>
     <div id="historial"></div>
   </section>
 </main>
@@ -256,6 +258,6 @@
 <script src="cards.js?v=15"></script>
 <script src="menores.js?v=15"></script>
 <script src="sonido.js?v=1"></script>
-<script src="app.js?v=37"></script>
+<script src="app.js?v=38"></script>
 </body>
 </html>

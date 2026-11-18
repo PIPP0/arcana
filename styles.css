@@ -740,3 +740,21 @@ span.cal-d.fut { opacity: .38; }
 .cal-q { color: var(--oro-claro) !important; font-family: var(--serif); font-style: italic; font-size: 1.1rem !important; }
 .cal-vacio { color: var(--lavanda); margin: 0; }
 @media (max-width: 480px) { .calendario { padding: 16px 12px; } .cal-g, .cal-sem { gap: 4px; } .cal-mini { width: 84px; } .cal-nav span { min-width: 7.5em; } }
+
+/* Mi espacio: el calendario va primero y, en pantallas anchas, junto a su detalle */
+@media (min-width: 880px) {
+  #v-espacio.estrecha { max-width: 1040px; }
+  #v-espacio > h2 { font-size: clamp(2rem, 3.2vw, 2.6rem); margin-top: 0; }
+  #v-espacio > .bajada { margin-top: 6px; }
+  .calendario { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); column-gap: 30px; align-items: start; padding: 20px 26px 24px; margin-top: 16px; }
+  .cal-cab, .cal-stats { grid-column: 1 / -1; }
+  .cal-stats { margin: 8px 0 12px; }
+  .cal-cuadro { grid-column: 1; }
+  .cal-det { grid-column: 2; margin-top: 0; }
+  .cal-carta { border-top: 0; padding-top: 0; }
+  .cal-d { aspect-ratio: auto; height: clamp(50px, 8.6vh, 92px); }
+  span.cal-d { place-items: start end; }
+  .cal-vacio { padding-top: 24px; }
+  #v-espacio .cabecera { display: none; } /* el botón Inicio de la cabecera ya hace de «volver» */
+  #v-espacio > h2 { margin-bottom: 0; }
+}
