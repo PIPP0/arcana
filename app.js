@@ -366,11 +366,13 @@
     const interruptor = (on) => `<label class="sw"><input type="checkbox" id="hoySw" role="switch" ${on ? 'checked' : ''}><span class="sw-pista" aria-hidden="true"></span><span class="sw-txt">Ocultar carta</span></label>`;
     function pintarEspera() {
       btn.classList.remove('vista-carta'); btn.setAttribute('aria-label', 'Dar vuelta mi carta de hoy');
+      if (btn.parentElement) btn.parentElement.classList.remove('abierta');
       txt.innerHTML = '<p class="hoy-espera">Está boca abajo, esperándote.</p>';
     }
     function mostrar() {
       anotarDia(hoy, g.carta); // toda carta visible queda anotada en el calendario
       btn.classList.add('vista-carta');
+      if (btn.parentElement) btn.parentElement.classList.add('abierta');
       btn.setAttribute('aria-label', `Tu carta de hoy: ${k.nombre}. Ampliar`);
       const lente = [
         `Hoy te acompaña ${k.hilo}. Fíjate dónde aparece: en una conversación, en una decisión pequeña, en cómo te tratas a ti.`,
