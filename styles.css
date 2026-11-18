@@ -806,3 +806,6 @@ span.cal-d.fut { opacity: .38; }
 .sw input:checked + .sw-pista::after { transform: translateX(20px); background: var(--oro-claro); }
 .sw input:focus-visible + .sw-pista { outline: 2px solid var(--oro-claro); outline-offset: 3px; }
 .sw:hover .sw-txt { color: var(--marfil); }
+
+/* el celular nunca se desplaza hacia los lados: los adornos que sobresalen (astrolabio) se recortan en el borde */
+html, body { overflow-x: clip; }
