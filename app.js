@@ -195,7 +195,7 @@
   function ir(id, foco = true) {
     if (id === 'tirada') estado.pregunta = $('#pregunta').value.trim();
     if (id === 'barajar') prepararBarajar();
-    if (id === 'espacio') { pintarHistorial(); pintarCalendario(); }
+    if (id === 'espacio') { carIdx = 0; pintarHistorial(); pintarCalendario(); }
     if (id === 'perfil') pintarCuenta();
     if (id === 'intencion') pintarTemas();
     if (id === 'mazo' || id === 'tirada') pintarCupo();
@@ -685,7 +685,7 @@
       el.innerHTML = `<div class="vacio"><p>Todavía no guardas ninguna lectura.</p><div class="acciones" style="justify-content:center"><button type="button" class="btn primario" data-ir="mazo">Comenzar mi lectura</button></div></div>`;
       return;
     }
-    el.innerHTML = a.map((r) => {
+    const slides = a.map((r) => {
       const t = TIRADAS.find((x) => x.id === r.tirada) || TIRADAS[0], tema = TEMAS.find((x) => x.id === r.tema) || TEMAS[0];
       const mz = mazoDe(r.mazo), cartas = (r.cartas || []).filter((i) => CARTAS[i]);
       return `<article class="registro">
@@ -699,8 +699,34 @@
         <div class="acciones" style="margin-top:14px"><button type="button" class="btn chico" data-borrar="${esc(r.id)}">Borrar esta lectura</button></div>
       </article>`;
     }).join('');
+    const nav = a.length > 1
+      ? `<div class="car-nav"><button type="button" class="btn chico" id="carAnt" aria-label="Lectura anterior">‹</button>
+          <div class="puntos" role="group" aria-label="Tus lecturas guardadas">${a.map((_, k) => `<button type="button" class="punto" data-punto="${k}" aria-label="Lectura ${k + 1} de ${a.length}"></button>`).join('')}</div>
+          <button type="button" class="btn chico" id="carSig" aria-label="Lectura siguiente">›</button></div>`
+      : '';
+    el.innerHTML = `<p class="car-txt" id="carTxt" aria-live="polite"></p><div class="carrusel" id="carrusel" tabindex="0" role="region" aria-label="Lecturas guardadas, desliza hacia los lados">${slides}</div>${nav}`;
+    const c = $('#carrusel'); carIdx = Math.min(carIdx, a.length - 1);
+    c.scrollLeft = carIdx * pasoCarrusel(c);
+    marcarPuntos(c);
+    let raf = 0; c.addEventListener('scroll', () => { if (raf) return; raf = requestAnimationFrame(() => { raf = 0; marcarPuntos(c); }); }, { passive: true });
+  }
+  /* carrusel de lecturas: la posición se calcula por el ancho de cada tarjeta */
+  let carIdx = 0;
+  const pasoCarrusel = (c) => { const t = c.querySelector('.registro'); return t ? t.getBoundingClientRect().width + 16 : 1; };
+  function marcarPuntos(c) {
+    const n = c.children.length, fin = c.scrollLeft + c.clientWidth >= c.scrollWidth - 3;
+    const i = fin ? n - 1 : Math.min(n - 1, Math.max(0, Math.round(c.scrollLeft / pasoCarrusel(c))));
+    carIdx = i;
+    $$('#historial .punto').forEach((p, k) => { p.classList.toggle('act', k === i); p.setAttribute('aria-current', k === i ? 'true' : 'false'); });
+    const t = $('#carTxt'); if (t) t.textContent = n > 1 ? `Lectura ${i + 1} de ${n}` : '1 lectura guardada';
+    const ant = $('#carAnt'), sig = $('#carSig'); if (ant) ant.disabled = i <= 0; if (sig) sig.disabled = i >= n - 1;
   }
   $('#historial').addEventListener('click', (e) => {
+    const c = $('#carrusel');
+    const p = e.target.closest('[data-punto]');
+    if (p && c) { c.scrollTo({ left: Number(p.dataset.punto) * pasoCarrusel(c), behavior: 'smooth' }); return; }
+    if (e.target.closest('#carAnt') && c) { c.scrollBy({ left: -pasoCarrusel(c), behavior: 'smooth' }); return; }
+    if (e.target.closest('#carSig') && c) { c.scrollBy({ left: pasoCarrusel(c), behavior: 'smooth' }); return; }
     const b = e.target.closest('[data-borrar]'); if (!b) return;
     if (b.dataset.seguro !== '1') { b.dataset.seguro = '1'; b.textContent = 'Toca de nuevo para borrar'; return; }
     escribir(leer().filter((x) => x.id !== b.dataset.borrar)); pintarHistorial(); aviso('Lectura borrada.');
