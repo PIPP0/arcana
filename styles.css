@@ -774,3 +774,10 @@ span.cal-d.fut { opacity: .38; }
 .punto:hover { transform: scale(1.25); }
 .punto.act { background: var(--oro); box-shadow: 0 0 10px color-mix(in srgb, var(--oro) 55%, transparent); transform: scale(1.2); }
 .punto:focus-visible { outline: 2px solid var(--oro-claro); outline-offset: 3px; }
+
+/* detalle de una lectura guardada */
+#v-detalle > h2, #v-detalle > .estado { text-align: center; margin-left: auto; margin-right: auto; }
+#v-detalle .ranura .nombre { opacity: 1; }
+#v-detalle .interpretacion { margin-top: 8px; }
+#v-detalle .cierre .acciones { justify-content: center; }
+.registro .acciones { display: flex; flex-wrap: wrap; gap: 10px; }

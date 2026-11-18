@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,500;1,6..96,400&family=Jost:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=33">
+<link rel="stylesheet" href="styles.css?v=34">
 </head>
 <body>
 <a class="salto" href="#contenido">Saltar al contenido</a>
@@ -206,6 +206,15 @@
     <div class="interpretacion" id="interpretacion" hidden></div>
   </section>
 
+  <!-- DETALLE DE UNA LECTURA GUARDADA -->
+  <section class="vista" id="v-detalle" hidden>
+    <div class="cabecera"><button type="button" class="volver" data-ir="espacio">← Mis lecturas</button></div>
+    <h2 tabindex="-1" id="detTitulo">Tu lectura</h2>
+    <p class="estado" id="detMeta"></p>
+    <div class="orbita ancha"><div class="rueda" aria-hidden="true"></div><div class="ranuras" id="detRanuras"></div></div>
+    <div class="interpretacion" id="detInterp"></div>
+  </section>
+
   <!-- MI PERFIL -->
   <section class="vista estrecha" id="v-perfil" hidden>
     <div class="cabecera"><button type="button" class="volver" data-ir="inicio">← Volver</button></div>
@@ -258,6 +267,6 @@
 <script src="cards.js?v=15"></script>
 <script src="menores.js?v=15"></script>
 <script src="sonido.js?v=1"></script>
-<script src="app.js?v=39"></script>
+<script src="app.js?v=41"></script>
 </body>
 </html>

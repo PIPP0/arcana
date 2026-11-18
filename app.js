@@ -204,7 +204,7 @@
     window.Nube.vista(id);
     if (id === 'barajar') window.Nube.eleccion({ mazo: estado.mazo, tema: estado.tema, tirada: estado.tirada && estado.tirada.id });
     $$('.vista').forEach((v) => { v.hidden = v.id !== 'v-' + id; });
-    document.body.className = (CON_TEMA.includes(id) ? 'tema-' + estado.mazo : '') + (id === 'elegir' ? ' con-fija' : '') + (id === 'inicio' ? '' : ' interior');
+    document.body.className = (id === 'detalle' ? 'tema-' + detMazo : CON_TEMA.includes(id) ? 'tema-' + estado.mazo : '') + (id === 'elegir' ? ' con-fija' : '') + (id === 'inicio' ? '' : ' interior');
     window.scrollTo(0, 0);
     if (foco) { const h = $('#v-' + id + ' h1, #v-' + id + ' h2'); if (h) h.focus({ preventScroll: true }); }
   }
@@ -554,8 +554,8 @@
   visor.addEventListener('click', (e) => { if (e.target === visor) visor.close(); });
   $('#interpretacion').addEventListener('click', (e) => { const b = e.target.closest('[data-ver]'); if (b) ampliar(Number(b.dataset.ver)); });
 
-  function sintesis(ks) {
-    const t = estado.tirada.id;
+  function sintesis(ks, tid) {
+    const t = tid || (estado.tirada && estado.tirada.id);
     let s;
     if (t === 'una') s = `${ks[0].nombre} te deja una imagen para hoy: ${ks[0].hilo}.`;
     else if (t === 'tiempo') s = `Leídas en orden, tus cartas trazan un recorrido: vienes ${de(ks[0].hilo)}, hoy te encuentras con ${ks[1].hilo} y se abre, como posibilidad, ${ks[2].hilo}.`;
@@ -571,24 +571,33 @@
     return s;
   }
 
-  function pintarInterpretacion() {
-    const ids = cartasDeLectura(), ks = ids.map((i) => CARTAS[i]), pos = estado.tirada.pos, mz = estado.mazo;
-    const tema = TEMAS.find((t) => t.id === estado.tema), centro = ks[Math.floor(ks.length / 2)];
-    const lp = estado.pregunta ? leerPregunta(estado.pregunta) : null;
+  /* Cuerpo de una lectura (cartas, reflexión, síntesis y preguntas). Sirve para la lectura recién hecha y para abrir una guardada.
+     p = { ids, pos, mz, tema, pregunta } */
+  function cuerpoLectura(p) {
+    const ids = p.ids, ks = ids.map((i) => CARTAS[i]), pos = p.pos, mz = p.mz;
+    const tema = TEMAS.find((t) => t.id === p.tema), centro = ks[Math.floor(ks.length / 2)];
+    const lp = p.pregunta ? leerPregunta(p.pregunta) : null;
     let h = `<div class="adorno" aria-hidden="true"></div><div><p class="intro">${tema.intro}</p></div>`;
     if (lp && lp.apoyo) h += `<div class="apoyo"><h3>No tienes que pasar por esto a solas</h3><p>Si estás viviendo un momento muy difícil, hablar con alguien ayuda. En Chile puedes llamar gratis al <b>*4141</b>, la línea de prevención del suicidio, o a Salud Responde al <b>600 360 7777</b>, a cualquier hora.</p></div>`;
-    if (lp) h += `<div class="tu-pregunta"><p class="pos">Tu pregunta</p><p class="q">«${esc(estado.pregunta)}»</p>${lp.notas.map((n) => `<p>${n}</p>`).join('')}${lp.profesional ? '<p>Para temas de salud, legales o de dinero, toma esta lectura solo como una pausa para pensar: la decisión merece el consejo de un profesional.</p>' : ''}</div>`;
+    if (lp) h += `<div class="tu-pregunta"><p class="pos">Tu pregunta</p><p class="q">«${esc(p.pregunta)}»</p>${lp.notas.map((n) => `<p>${n}</p>`).join('')}${lp.profesional ? '<p>Para temas de salud, legales o de dinero, toma esta lectura solo como una pausa para pensar: la decisión merece el consejo de un profesional.</p>' : ''}</div>`;
     h += ks.map((k, i) => {
       const nota = notaMazo(ids[i], mz);
       return `<article class="bloque"><button type="button" class="ver" data-ver="${ids[i]}" aria-label="Ampliar ${esc(k.nombre)}">${carta(cara(ids[i], mz), mz)}</button>
         <div><p class="pos">${pos[i].nombre}</p><h3>${k.nombre}</h3><p class="claves">${k.claves}</p>
         <p class="significa">${k.esencia}</p>
-        <p class="rot">Para ti</p><p class="texto">${reflexion(pos[i].id, k, estado.tema)}</p>${nota ? `<p class="nota-mazo">${nota}</p>` : ''}</div></article>`;
+        <p class="rot">Para ti</p><p class="texto">${reflexion(pos[i].id, k, p.tema)}</p>${nota ? `<p class="nota-mazo">${nota}</p>` : ''}</div></article>`;
     }).join('');
-    h += `<section class="sintesis"><h3>${ks.length === 1 ? 'En síntesis' : 'Leídas en conjunto'}</h3><p>${sintesis(ks)}</p>${estado.pregunta ? `<p>Vuelve ahora a tu pregunta. Leída desde ${centro.hilo}, ¿qué respuesta se asoma que no tenías antes de barajar?</p>` : ''}<p>${tema.cierre}</p></section>`;
-    h += `<section><h3>Preguntas para ti</h3><ul>${ks.map((k) => `<li>${k.pregunta}</li>`).join('')}${PREG_TEMA[estado.tema] ? `<li>${PREG_TEMA[estado.tema](centro.hilo)}</li>` : ''}</ul></section>`;
+    h += `<section class="sintesis"><h3>${ks.length === 1 ? 'En síntesis' : 'Leídas en conjunto'}</h3><p>${sintesis(ks, p.tirada)}</p>${p.pregunta ? `<p>Vuelve ahora a tu pregunta. Leída desde ${centro.hilo}, ¿qué respuesta se asoma que no tenías antes de barajar?</p>` : ''}<p>${tema.cierre}</p></section>`;
+    h += `<section><h3>Preguntas para ti</h3><ul>${ks.map((k) => `<li>${k.pregunta}</li>`).join('')}${PREG_TEMA[p.tema] ? `<li>${PREG_TEMA[p.tema](centro.hilo)}</li>` : ''}</ul></section>`;
     h += `<section><h3>Para seguir explorando</h3><ul>${tema.acciones.map((a) => `<li>${a}</li>`).join('')}</ul></section>`;
     h += `<p class="descargo">Esta es una interpretación simbólica, pensada para reflexionar. No predice lo que va a pasar ni reemplaza el consejo de un profesional.</p>`;
+    return h;
+  }
+
+  function pintarInterpretacion() {
+    const ids = cartasDeLectura();
+    let h = cuerpoLectura({ ids, pos: estado.tirada.pos, tirada: estado.tirada.id, mz: estado.mazo, tema: estado.tema, pregunta: estado.pregunta });
+    const mz = estado.mazo;
     h += `<section class="cierre"><h3>Tu reflexión</h3>
       ${permisos().diario === false ? '' : `<label class="campo" for="notaLectura" style="margin-top:8px">Una nota privada <span>(opcional)</span></label>
       <textarea id="notaLectura" rows="3" maxlength="1000" placeholder="¿Qué te llevas de esta lectura?"></textarea>`}
@@ -696,7 +705,7 @@
         <p style="margin-top:4px">Mazo ${mz.nombre}, ${mz.anio}</p>
         ${r.pregunta ? `<p style="margin-top:6px"><em>«${esc(r.pregunta)}»</em></p>` : ''}
         ${r.nota ? `<p class="nota-propia">${esc(r.nota)}</p>` : ''}
-        <div class="acciones" style="margin-top:14px"><button type="button" class="btn chico" data-borrar="${esc(r.id)}">Borrar esta lectura</button></div>
+        <div class="acciones" style="margin-top:14px"><button type="button" class="btn chico primario" data-detalle="${esc(r.id)}">Ver detalle</button><button type="button" class="btn chico" data-borrar="${esc(r.id)}">Borrar esta lectura</button></div>
       </article>`;
     }).join('');
     const nav = a.length > 1
@@ -710,6 +719,43 @@
     marcarPuntos(c);
     let raf = 0; c.addEventListener('scroll', () => { if (raf) return; raf = requestAnimationFrame(() => { raf = 0; marcarPuntos(c); }); }, { passive: true });
   }
+  /* ---------- detalle de una lectura guardada ---------- */
+  let detId = null, detMazo = 'rws';
+  function abrirDetalle(id) {
+    const r = leer().find((x) => x.id === id); if (!r) { aviso('No encontré esa lectura.'); return; }
+    const t = TIRADAS.find((x) => x.id === r.tirada) || TIRADAS[0], tema = TEMAS.find((x) => x.id === r.tema) || TEMAS[0], mz = mazoDe(r.mazo);
+    const ids = (r.cartas || []).filter((i) => CARTAS[i]); if (!ids.length) { aviso('Esa lectura no tiene cartas.'); return; }
+    detId = id; detMazo = mz.id;
+    $('#detTitulo').textContent = `${t.nombre} · ${tema.nombre}`;
+    $('#detMeta').textContent = `${fmtFecha.format(new Date(r.fecha))} · Mazo ${mz.nombre}, ${mz.anio}`;
+    $('#detRanuras').className = 'ranuras' + (ids.length === 1 ? ' una' : '');
+    $('#detRanuras').innerHTML = ids.map((i, n) => `<div class="ranura brilla"><p class="pos">${t.pos[n] ? t.pos[n].nombre : ''}</p>
+      <button type="button" class="giro vista-carta" data-ver="${i}" aria-label="Ampliar ${esc(CARTAS[i].nombre)}"><span class="dentro"><span class="lado carta c-${mz.id}">${reverso(mz.id)}</span><span class="lado frente carta c-${mz.id}">${cara(i, mz.id, false)}</span></span></button>
+      <p class="nombre">${esc(CARTAS[i].nombre)}</p></div>`).join('');
+    const diario = permisos().diario !== false;
+    $('#detInterp').innerHTML = cuerpoLectura({ ids, pos: t.pos, tirada: t.id, mz: mz.id, tema: r.tema, pregunta: r.pregunta || '' })
+      + `<section class="cierre"><h3>Tu nota</h3>
+        ${diario ? `<label class="campo" for="detNota" style="margin-top:8px">Una nota privada <span>(opcional)</span></label><textarea id="detNota" rows="3" maxlength="1000" placeholder="¿Qué te llevas de esta lectura?">${esc(r.nota || '')}</textarea>` : (r.nota ? `<p class="nota-propia">${esc(r.nota)}</p>` : '')}
+        <div class="acciones">${diario ? '<button type="button" class="btn primario" id="btnDetNota">Guardar nota</button>' : ''}
+          <button type="button" class="btn" data-ir="espacio">Volver a mis lecturas</button>
+          <button type="button" class="btn chico" id="btnDetBorrar">Borrar esta lectura</button></div></section>`;
+    ir('detalle');
+  }
+  const vDetalle = $('#v-detalle');
+  if (vDetalle) vDetalle.addEventListener('click', (e) => {
+    const v = e.target.closest('[data-ver]'); if (v) { ampliar(Number(v.dataset.ver), detMazo); return; }
+    if (e.target.id === 'btnDetNota') {
+      const a = leer(), r = a.find((x) => x.id === detId); if (!r) return;
+      r.nota = ($('#detNota').value || '').trim();
+      if (escribir(a)) { sfx.guardar(); aviso('Nota guardada.'); } else aviso('No se pudo guardar en este navegador.');
+      return;
+    }
+    if (e.target.id === 'btnDetBorrar') {
+      if (e.target.dataset.seguro !== '1') { e.target.dataset.seguro = '1'; e.target.textContent = 'Toca de nuevo para borrar'; return; }
+      escribir(leer().filter((x) => x.id !== detId)); detId = null; ir('espacio'); aviso('Lectura borrada.');
+    }
+  });
+
   /* carrusel de lecturas: la posición se calcula por el ancho de cada tarjeta */
   let carIdx = 0;
   const pasoCarrusel = (c) => { const t = c.querySelector('.registro'); return t ? t.getBoundingClientRect().width + 16 : 1; };
@@ -723,6 +769,7 @@
   }
   $('#historial').addEventListener('click', (e) => {
     const c = $('#carrusel');
+    const det = e.target.closest('[data-detalle]'); if (det) { abrirDetalle(det.dataset.detalle); return; }
     const p = e.target.closest('[data-punto]');
     if (p && c) { c.scrollTo({ left: Number(p.dataset.punto) * pasoCarrusel(c), behavior: 'smooth' }); return; }
     if (e.target.closest('#carAnt') && c) { c.scrollBy({ left: -pasoCarrusel(c), behavior: 'smooth' }); return; }
