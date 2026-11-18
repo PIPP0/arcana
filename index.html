@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,500;1,6..96,400&family=Jost:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=17">
+<link rel="stylesheet" href="styles.css?v=19">
 </head>
 <body>
 <a class="salto" href="#contenido">Saltar al contenido</a>
@@ -67,8 +67,8 @@
 
     <section class="tramo">
       <div class="adorno" aria-hidden="true"></div>
-      <h2>Tres mazos, cinco siglos de arte</h2>
-      <p class="bajada centro">No son ilustraciones genéricas: son las cartas originales de tres obras históricas, completas.</p>
+      <h2 id="vitTitulo">Tres mazos, cinco siglos de arte</h2>
+      <p class="bajada centro" id="vitBajada">No son ilustraciones genéricas: son las cartas originales de tres obras históricas, completas.</p>
       <ul class="vitrina" id="vitrina"></ul>
     </section>
 
@@ -83,7 +83,7 @@
       <div class="adorno" aria-hidden="true"></div>
       <h2>Tu lectura en tres gestos</h2>
       <ol class="pasos">
-        <li><span>I</span><div><h3>Elige tu mazo</h3><p>Tres obras históricas muy distintas. Cambia la imagen; el sentido de cada carta se mantiene.</p></div></li>
+        <li><span>I</span><div><h3>Elige tu mazo</h3><p id="pasoMazo">Tres obras históricas muy distintas. Cambia la imagen; el sentido de cada carta se mantiene.</p></div></li>
         <li><span>II</span><div><h3>Baraja y escoge</h3><p>El orden queda definido al azar cuando barajas, antes de que elijas. Tú decides qué cartas tomar.</p></div></li>
         <li><span>III</span><div><h3>Lee y reflexiona</h3><p>Una interpretación clara, carta por carta y en conjunto, que puedes guardar en tu diario.</p></div></li>
       </ol>
@@ -91,30 +91,10 @@
 
     <section class="tramo" id="planes">
       <div class="adorno" aria-hidden="true"></div>
-      <h2>Empieza gratis. Profundiza cuando quieras.</h2>
-      <p class="bajada centro">Hoy puedes leer gratis con los mazos completos. Las lecturas profundas y Premium están en preparación.</p>
-      <ul class="planes-g">
-        <li class="plan">
-          <h3>Esencial</h3>
-          <p class="monto">Gratis</p><p class="periodo">Disponible hoy</p>
-          <ul><li>Lecturas de una y de tres cartas</li><li>Mazos históricos de 78 cartas</li><li>Carta del día</li><li>Diario privado en tu dispositivo</li></ul>
-          <button type="button" class="btn primario" data-ir="mazo">Comenzar ahora</button>
-        </li>
-        <li class="plan dest">
-          <p class="cinta">La más completa</p>
-          <h3>Lectura profunda</h3>
-          <p class="monto">$3.990</p><p class="periodo">por lectura</p>
-          <ul><li>Tiradas amplias, como la Cruz Celta</li><li>Interpretación personalizada según tu pregunta</li><li>Resumen completo para descargar</li></ul>
-          <button type="button" class="btn" disabled>Muy pronto</button>
-        </li>
-        <li class="plan">
-          <h3>Premium</h3>
-          <p class="monto">$6.990</p><p class="periodo">al mes</p>
-          <ul><li>Lecturas profundas incluidas cada mes</li><li>Mazos exclusivos y cartas invertidas</li><li>Historial y diario en tu cuenta</li><li>Estilos de lectura a elección</li></ul>
-          <button type="button" class="btn" disabled>Muy pronto</button>
-        </li>
-      </ul>
-      <p class="nota centro-t">Precios de referencia en pesos chilenos. Todavía no se puede comprar: por ahora, todo lo disponible es gratis.</p>
+      <h2>Empieza gratis. Descubre todo suscribiéndote.</h2>
+      <p class="bajada centro" id="planesBajada">Free te deja empezar hoy. Con Full y Premium se abren todas las tiradas, los mazos más antiguos y la pregunta libre, y tu espacio crece.</p>
+      <ul class="planes-g" id="planesG"></ul>
+      <p class="nota centro-t">Los cobros se activan muy pronto: crea tu cuenta hoy y quedarás lista o listo para suscribirte cuando abran. Precios en pesos chilenos.</p>
     </section>
 
     <section class="tramo">
@@ -152,7 +132,7 @@
   <section class="vista" id="v-mazo" hidden>
     <div class="cabecera"><button type="button" class="volver" data-ir="inicio">← Volver</button><p class="paso"><span class="lunas" aria-hidden="true"><i class="actual"></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span><span class="sr">Paso 1 de 5</span></p></div>
     <h2 tabindex="-1">Elige tu mazo</h2>
-    <p class="bajada">Tres obras históricas, cada una con sus 78 cartas originales. Cambia la imagen, no el significado.</p>
+    <p class="bajada" id="mazoBajada">Tres obras históricas, cada una con sus 78 cartas originales. Cambia la imagen, no el significado.</p>
     <p class="cupo" id="cupoNota" role="status" hidden></p>
     <div class="mazos" id="listaMazos"></div>
   </section>
@@ -242,9 +222,9 @@
 <div class="aviso" id="aviso" role="status" aria-live="polite"></div>
 
 <script src="nube-config.js?v=16"></script>
-<script src="nube.js?v=16"></script>
+<script src="nube.js?v=18"></script>
 <script src="cards.js?v=15"></script>
 <script src="menores.js?v=15"></script>
-<script src="app.js?v=18"></script>
+<script src="app.js?v=20"></script>
 </body>
 </html>

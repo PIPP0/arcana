@@ -603,3 +603,23 @@ body.interior main::after { content: ''; position: fixed; left: -300px; top: -26
 .hoy-bloques .noche { border-color: color-mix(in srgb, var(--oro) 55%, transparent); background: rgba(var(--panel), .65); }
 .hoy-bloques .noche p { font-family: var(--serif); font-style: italic; font-size: 1.2rem; color: var(--oro-claro); }
 .hoy-nota { margin-top: 14px; font-size: .85rem; color: var(--lavanda); }
+
+/* pocos mazos: se centran en vez de quedar a la izquierda */
+@media (min-width: 720px) {
+  .vitrina.pocos, .mazos.pocos { grid-template-columns: repeat(var(--n, 2), minmax(0, 400px)); justify-content: center; }
+}
+
+/* suscripción: lo que el perfil no incluye se muestra como invitación */
+.sello-p { display: inline-block; font-size: .72rem; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; color: #14122a; background: var(--oro); padding: 3px 12px; border-radius: 999px; }
+.mazo.bloq, .tirada.bloq, .tema-p.bloq { position: relative; border-color: color-mix(in srgb, var(--oro) 55%, transparent); }
+.mazo.bloq .abanico, .tirada.bloq .tendido { filter: saturate(.55) brightness(.8); }
+.mazo.bloq > .sello-p, .tirada.bloq > .sello-p { position: absolute; top: 14px; right: 14px; z-index: 2; }
+.tema-p.bloq > span { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.tema-p small { font-family: var(--sans, inherit); font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--oro-claro); line-height: 1.35; }
+.vit .suscr { display: block; width: 100%; margin-top: 14px; padding: 10px 12px; border-radius: 14px; border: 1px dashed var(--oro); background: color-mix(in srgb, var(--oro) 8%, transparent); color: var(--oro-claro); font: inherit; font-size: .95rem; cursor: pointer; }
+.vit .suscr .sello-p { display: block; width: fit-content; margin: 0 auto 8px; }
+.vit .suscr:hover { background: color-mix(in srgb, var(--oro) 16%, transparent); }
+.enlace-p { background: none; border: 0; padding: 0; color: var(--oro-claro); font: inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.plan .lema { color: var(--lavanda); font-size: .95rem; margin-top: 6px; min-height: 2.6em; }
+.plan li.no { opacity: .5; }
+.plan li.no::before { content: '—'; color: var(--lavanda); }

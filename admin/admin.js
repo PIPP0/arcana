@@ -17,9 +17,9 @@
   const DEF = { cartaDelDia: true, desfile: true, planes: true, cuentas: true, medicion: true, mazos: { rws: true, dodal: true, sola: true }, aviso: { activo: false, texto: '' } };
   const T3 = { una: true, tiempo: true, perspectivas: true };
   const PERF_DEF = {
-    free: { tiradas: { una: true, tiempo: true, perspectivas: false }, mazos: { rws: true, dodal: true, sola: false }, temaLibre: false, diario: true, lecturasDia: 5, guardadas: 10 },
-    full: { tiradas: Object.assign({}, T3), mazos: { rws: true, dodal: true, sola: true }, temaLibre: true, diario: true, lecturasDia: 15, guardadas: 100 },
-    premium: { tiradas: Object.assign({}, T3), mazos: { rws: true, dodal: true, sola: true }, temaLibre: true, diario: true, lecturasDia: null, guardadas: null }
+    free: { precio: 'Gratis', periodo: 'Disponible hoy', tiradas: { una: true, tiempo: true, perspectivas: false }, mazos: { rws: true, dodal: true, sola: false }, temaLibre: false, diario: true, lecturasDia: 5, guardadas: 10 },
+    full: { precio: '$3.990', periodo: 'al mes', tiradas: Object.assign({}, T3), mazos: { rws: true, dodal: true, sola: true }, temaLibre: true, diario: true, lecturasDia: 15, guardadas: 100 },
+    premium: { precio: '$6.990', periodo: 'al mes', tiradas: Object.assign({}, T3), mazos: { rws: true, dodal: true, sola: true }, temaLibre: true, diario: true, lecturasDia: null, guardadas: null }
   };
   const PERFILES = [['free', 'Free'], ['full', 'Full'], ['premium', 'Premium']];
   const esObj = (x) => x && typeof x === 'object' && !Array.isArray(x) && !(x instanceof Date);
@@ -323,11 +323,15 @@
     const celdaB = (id, on, rot) => `<td>${interruptor(id, on, rot)}</td>`;
     const celdaN = (id, v, rot) => `<td><input type="number" min="0" step="1" class="num" id="${id}" value="${v === null || v === undefined ? '' : v}" placeholder="Sin límite" aria-label="${esc(rot)}"></td>`;
     const filaB = (t, d, f) => `<tr><td><b style="font-weight:400">${t}</b>${d ? `<div class="nota" style="color:var(--tenue);font-size:.85rem">${d}</div>` : ''}</td>${PERFILES.map(([k]) => celdaB(f(k).id, f(k).on, t + ' · ' + k)).join('')}</tr>`;
+    const filaT = (t, d, campo) => `<tr><td><b style="font-weight:400">${t}</b><div class="nota" style="color:var(--tenue);font-size:.85rem">${d}</div></td>${PERFILES.map(([k]) => `<td><input type="text" class="txt" maxlength="24" id="pt_${k}_${campo}" value="${esc(P[k][campo] || '')}" aria-label="${esc(t + ' · ' + k)}"></td>`).join('')}</tr>`;
     const filaN = (t, d, campo) => `<tr><td><b style="font-weight:400">${t}</b><div class="nota" style="color:var(--tenue);font-size:.85rem">${d}</div></td>${PERFILES.map(([k]) => celdaN('pn_' + k + '_' + campo, P[k][campo], t + ' · ' + k)).join('')}</tr>`;
     let h = cabeza('Perfiles', 'Qué incluye cada perfil. Quien no ha entrado, o no tiene perfil asignado, usa Free. Lo que un perfil no incluye no se le muestra; los topes se explican cuando se agotan.', `<button type="button" class="btn chico" id="recargar">Actualizar</button>`);
     h += `<div class="kpis">${PERFILES.map(([k, n]) => `<div class="kpi"><div class="t">${n}</div><div class="n">${n0(cont[k])}</div><div class="d">cuentas con este perfil</div></div>`).join('')}</div>`;
     h += `<div class="tarjeta"><h2>Funciones por perfil</h2><p class="nota">Los interruptores generales de «Funciones» siguen mandando: si un mazo está apagado allí, no aparece en ningún perfil. Los cambios llegan a las visitas en su próxima carga.</p>
       <div class="tabla-c"><table><thead><tr><th>Función</th>${PERFILES.map(([, n]) => `<th>${n}</th>`).join('')}</tr></thead><tbody>
+      <tr class="sub"><td colspan="4"><b>Cómo se muestra en la portada</b></td></tr>
+      ${filaT('Precio', 'Texto grande de la tarjeta del plan. Por ejemplo $3.990 o Gratis.', 'precio')}
+      ${filaT('Periodo', 'Texto pequeño bajo el precio. Por ejemplo «al mes».', 'periodo')}
       <tr class="sub"><td colspan="4"><b>Tiradas</b></td></tr>
       ${Object.keys(TIRADAS).map((t) => filaB(TIRADAS[t], '', (k) => ({ id: `pb_${k}_t_${t}`, on: P[k].tiradas[t] !== false }))).join('')}
       <tr class="sub"><td colspan="4"><b>Mazos</b></td></tr>
@@ -404,6 +408,7 @@
     $$('[id^="pn_"]').forEach((i) => { i.onchange = () => {
       const [, k, campo] = i.id.split('_'), v = i.value.trim();
       E.editP[k][campo] = v === '' ? null : Math.max(0, Math.round(Number(v)) || 0); pintar(); }; });
+    $$('[id^="pt_"]').forEach((i) => { i.oninput = () => { const [, k, campo] = i.id.split('_'); E.editP[k][campo] = i.value; $('#barraG').hidden = !perfSucio(); }; });
     const dp = $('#descartarP'); if (dp) dp.onclick = () => { E.editP = perfEdit(E.perfiles); pintar(); };
     const gp = $('#guardarP'); if (gp) gp.onclick = async () => {
       gp.disabled = true;

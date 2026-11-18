@@ -13,9 +13,9 @@
   /* Perfiles: lo que cada uno incluye. null en un tope = sin límite. El admin lo cambia en config/perfiles. */
   const T3 = { una: true, tiempo: true, perspectivas: true };
   const PERF_DEF = {
-    free: { tiradas: { una: true, tiempo: true, perspectivas: false }, mazos: { rws: true, dodal: true, sola: false }, temaLibre: false, diario: true, lecturasDia: 5, guardadas: 10 },
-    full: { tiradas: Object.assign({}, T3), mazos: { rws: true, dodal: true, sola: true }, temaLibre: true, diario: true, lecturasDia: 15, guardadas: 100 },
-    premium: { tiradas: Object.assign({}, T3), mazos: { rws: true, dodal: true, sola: true }, temaLibre: true, diario: true, lecturasDia: null, guardadas: null }
+    free: { precio: 'Gratis', periodo: 'Disponible hoy', tiradas: { una: true, tiempo: true, perspectivas: false }, mazos: { rws: true, dodal: true, sola: false }, temaLibre: false, diario: true, lecturasDia: 5, guardadas: 10 },
+    full: { precio: '$3.990', periodo: 'al mes', tiradas: Object.assign({}, T3), mazos: { rws: true, dodal: true, sola: true }, temaLibre: true, diario: true, lecturasDia: 15, guardadas: 100 },
+    premium: { precio: '$6.990', periodo: 'al mes', tiradas: Object.assign({}, T3), mazos: { rws: true, dodal: true, sola: true }, temaLibre: true, diario: true, lecturasDia: null, guardadas: null }
   };
   const PERFILES = ['free', 'full', 'premium'];
 
@@ -146,6 +146,7 @@
     funciones: () => F,
     usuario: () => usuario,
     perfil: () => (cfg ? miPerfil : 'premium'),
+    todosPerfiles: () => PF,
     /* Lo que el perfil de esta persona incluye. Sin nube conectada (desarrollo local) se ve todo. */
     permisos: () => (cfg ? PF[miPerfil] : PERF_DEF.premium),
     alCambiarFunciones(f) { oyentesF.push(f); f(F); },

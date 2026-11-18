@@ -180,6 +180,9 @@
     if (foco) { const h = $('#v-' + id + ' h1, #v-' + id + ' h2'); if (h) h.focus({ preventScroll: true }); }
   }
   document.addEventListener('click', (e) => {
+    const pl = e.target.closest('[data-planes]'); if (pl) { irAPlanes(); return; }
+    const sus = e.target.closest('[data-suscribir]');
+    if (sus) { ir('espacio'); aviso('Crea tu cuenta y deja todo listo: los cobros se activan muy pronto.'); return; }
     const b = e.target.closest('[data-ir]');
     if (b) ir(b.dataset.ir);
   });
@@ -224,7 +227,19 @@
   document.documentElement.style.setProperty('--astro', `url("${IMG1}")`);
   const permisos = () => window.Nube.permisos();
   const NOMBRE_PERFIL = { free: 'Free', full: 'Full', premium: 'Premium' };
-  const mazoActivo = (id) => ((window.Nube.funciones().mazos) || {})[id] !== false && ((permisos().mazos) || {})[id] !== false;
+  const mazoVisible = (id) => ((window.Nube.funciones().mazos) || {})[id] !== false;
+  const mazoActivo = (id) => mazoVisible(id) && ((permisos().mazos) || {})[id] !== false;
+  const mazoIncluido = (id) => ((permisos().mazos) || {})[id] !== false;
+  const tiradaIncluida = (id) => ((permisos().tiradas) || {})[id] !== false;
+  /* Qué plan abre algo que el perfil actual no incluye (el más barato que lo tenga). */
+  const NOMBRES_PLAN = { free: 'Free', full: 'Full', premium: 'Premium' };
+  function planQueAbre(prueba) { const T = window.Nube.todosPerfiles(); return ['full', 'premium'].find((k) => prueba(T[k] || {})) || 'premium'; }
+  const bloqueo = (prueba) => `Con suscripción · ${NOMBRES_PLAN[planQueAbre(prueba)]}`;
+  function irAPlanes(msg) {
+    ir('inicio', false);
+    setTimeout(() => { const p = $('#planes'); if (p) p.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 60);
+    if (msg) aviso(msg);
+  }
   const tiradasPermitidas = () => TIRADAS.filter((t) => ((permisos().tiradas) || {})[t.id] !== false);
   const temasPermitidos = () => TEMAS.filter((t) => t.id !== 'libre' || permisos().temaLibre !== false);
   /* cupo diario de lecturas (se cuenta en este dispositivo) */
@@ -239,16 +254,33 @@
     const pl = (n) => (n === 1 ? 'lectura' : 'lecturas');
     return cupoAgotado() ? `Hoy ya hiciste tus ${t} ${pl(t)} del perfil ${p}. Mañana vuelves a tener ${t}.` : `Perfil ${p}: te quedan ${t - lecturasHoy()} de ${t} ${pl(t)} hoy.`;
   }
-  function pintarCupo() { const n = $('#cupoNota'); if (!n) return; const x = textoCupo(); n.hidden = !x; n.textContent = x; n.classList.toggle('agotado', cupoAgotado()); }
-  const activos = () => MAZOS.filter((m) => !m.pendiente && mazoActivo(m.id));
+  function pintarCupo() {
+    const n = $('#cupoNota'); if (!n) return; const x = textoCupo(); n.hidden = !x;
+    n.innerHTML = x ? esc(x) + (cupoAgotado() || window.Nube.perfil() === 'free' ? ` <button type="button" class="enlace-p" data-planes="1">${cupoAgotado() ? 'Sigue leyendo hoy suscribiéndote' : 'Lee sin límites suscribiéndote'} →</button>` : '') : '';
+    n.classList.toggle('agotado', cupoAgotado());
+  }
+  const activos = () => MAZOS.filter((m) => !m.pendiente && mazoVisible(m.id));
+  /* Los textos y el centrado se ajustan a cuántos mazos incluye el perfil (y no estén apagados). */
+  function ajustarTextosMazos() {
+    const n = activos().length, pocos = n < 3;
+    const num = { 1: ['Una obra', 'una obra histórica', 'Una obra histórica'], 2: ['Dos mazos', 'dos obras históricas', 'Dos obras históricas'] }[n] || ['Tres mazos', 'tres obras históricas', 'Tres obras históricas'];
+    const set = (id, t) => { const el = $(id); if (el) el.textContent = t; };
+    set('#vitTitulo', n === 3 ? 'Tres mazos, cinco siglos de arte' : n === 2 ? 'Dos mazos, de la historia del tarot' : 'Una obra de la historia del tarot');
+    set('#vitBajada', `No son ilustraciones genéricas: son las cartas originales de ${num[1]}, completas.`);
+    set('#pasoMazo', `${num[2]} muy distintas. Cambia la imagen; el sentido de cada carta se mantiene.`.replace('Una obra histórica muy distintas', 'Una obra histórica completa'));
+    set('#mazoBajada', `${num[2]}, cada una con sus 78 cartas originales. Cambia la imagen, no el significado.`.replace('Una obra histórica, cada una', 'Una obra histórica, con'));
+    ['#vitrina', '#listaMazos'].forEach((id) => { const el = $(id); if (el) { el.classList.toggle('pocos', pocos); el.style.setProperty('--n', Math.max(1, n)); } });
+  }
   const pintarVitrina = () => { $('#vitrina').innerHTML = activos().map((m) =>
     `<li class="vit tema-${m.id}"><span class="abanico" aria-hidden="true">${m.muestra.slice(0, 3).map((i) => carta(cara(i, m.id, false), m.id)).join('')}</span>
-      <p class="precio">${m.anio} · ${m.lugar}</p><h3>${m.nombre}</h3><p>${m.tecnica}. 78 cartas.</p></li>`).join(''); };
+      <p class="precio">${m.anio} · ${m.lugar}</p><h3>${m.nombre}</h3><p>${m.tecnica}. 78 cartas.</p>
+      ${mazoIncluido(m.id) ? '' : `<button type="button" class="suscr" data-planes="1"><span class="sello-p">${bloqueo((P) => (P.mazos || {})[m.id] !== false)}</span>Descúbrelo suscribiéndote →</button>`}</li>`).join('');
+    ajustarTextosMazos(); };
   pintarVitrina();
 
   /* desfile de cartas reales */
   const DESFILE = [['rws', 17], ['dodal', 19], ['sola', 0], ['rws', 2], ['dodal', 1], ['sola', 13], ['rws', 36], ['dodal', 10], ['sola', 21], ['rws', 19], ['dodal', 18], ['sola', 6], ['rws', 6], ['dodal', 64]];
-  const pintarDesfile = () => { const D = DESFILE.filter(([m]) => mazoActivo(m)); $('#desfile').innerHTML = D.concat(D).map(([m, i]) => `<img src="${src(m, i)}" alt="" loading="lazy" decoding="async">`).join(''); };
+  const pintarDesfile = () => { const D = DESFILE.filter(([m]) => mazoVisible(m)); $('#desfile').innerHTML = D.concat(D).map(([m, i]) => `<img src="${src(m, i)}" alt="" loading="lazy" decoding="async">`).join(''); };
   pintarDesfile();
 
   /* carta del día: la misma durante todo el día, en este dispositivo */
@@ -311,17 +343,19 @@
   })();
 
   /* ---------- mazos ---------- */
-  const pintarListaMazos = () => { $('#listaMazos').innerHTML = MAZOS.filter((m) => m.pendiente || mazoActivo(m.id)).map((m) => m.pendiente
+  const pintarListaMazos = () => { $('#listaMazos').innerHTML = MAZOS.filter((m) => m.pendiente || mazoVisible(m.id)).map((m) => m.pendiente
     ? `<div class="mazo tema-${m.id}"><span class="ficha"><span class="precio">${m.anio} · ${m.lugar}</span><h3>${m.nombre}</h3><p>${m.desc}</p><span class="etiqueta">Se está cargando · disponible muy pronto</span></span></div>`
-    : `<button type="button" class="mazo tema-${m.id}" data-mazo="${m.id}">
+    : `<button type="button" class="mazo tema-${m.id}${mazoIncluido(m.id) ? '' : ' bloq'}" data-mazo="${m.id}"${mazoIncluido(m.id) ? '' : ' data-bloq="1"'}>
+      ${mazoIncluido(m.id) ? '' : `<span class="sello-p">${bloqueo((P) => (P.mazos || {})[m.id] !== false)}</span>`}
       <span class="abanico cinco" aria-hidden="true">${m.muestra.map((i) => carta(cara(i, m.id, false), m.id)).join('')}</span>
       <span class="ficha"><span class="precio">${m.anio} · ${m.lugar}</span><h3>${m.nombre}</h3>
         <p>${m.desc}</p><span class="etiqueta">78 cartas · ${m.tecnica}</span>
-        <span class="elegir">Leer con este mazo →</span></span>
+        <span class="elegir">${mazoIncluido(m.id) ? 'Leer con este mazo →' : 'Descúbrelo suscribiéndote →'}</span></span>
     </button>`).join(''); };
   pintarListaMazos();
   $('#listaMazos').addEventListener('click', (e) => {
     const b = e.target.closest('[data-mazo]'); if (!b) return;
+    if (b.dataset.bloq) { irAPlanes('Este mazo se abre con una suscripción. Mira los planes.'); return; }
     if (cupoAgotado()) { aviso(textoCupo()); return; }
     estado.mazo = b.dataset.mazo; roce(); ir('intencion');
   });
@@ -329,12 +363,15 @@
   /* ---------- temas ---------- */
   function pintarTemas() {
     if (!temasPermitidos().some((t) => t.id === estado.tema)) estado.tema = 'general';
-    $('#listaTemas').innerHTML = temasPermitidos().map((t) =>
-      `<button type="button" class="tema-p" role="radio" aria-checked="${t.id === estado.tema}" data-tema="${t.id}" tabindex="${t.id === estado.tema ? 0 : -1}"><img src="${src(estado.mazo, TEMA_IMG[t.id])}" alt="" decoding="async"><span>${t.nombre}</span></button>`).join('');
+    $('#listaTemas').innerHTML = TEMAS.map((t) => {
+      const bl = t.id === 'libre' && permisos().temaLibre === false;
+      return `<button type="button" class="tema-p${bl ? ' bloq' : ''}" role="radio" aria-checked="${t.id === estado.tema}" data-tema="${t.id}"${bl ? ' data-bloq="1"' : ''} tabindex="${t.id === estado.tema ? 0 : -1}"><img src="${src(estado.mazo, TEMA_IMG[t.id])}" alt="" decoding="async"><span>${t.nombre}${bl ? `<small>${bloqueo((P) => P.temaLibre !== false)} · Descúbrelo suscribiéndote</small>` : ''}</span></button>`;
+    }).join('');
   }
   pintarTemas();
   $('#listaTemas').addEventListener('click', (e) => {
     const b = e.target.closest('[data-tema]'); if (!b) return;
+    if (b.dataset.bloq) { irAPlanes('La pregunta libre se abre con una suscripción. Mira los planes.'); return; }
     estado.tema = b.dataset.tema; pintarTemas(); $(`[data-tema="${estado.tema}"]`).focus();
   });
   $('#listaTemas').addEventListener('keydown', (e) => {
@@ -354,18 +391,20 @@
   };
   function pintarTiradas() {
     const back = reverso(estado.mazo);
-    $('#listaTiradas').innerHTML = tiradasPermitidas().map((t) =>
-      `<button type="button" class="tirada t-${t.id} revela visto" data-tirada="${t.id}">
+    $('#listaTiradas').innerHTML = TIRADAS.map((t) =>
+      `<button type="button" class="tirada t-${t.id} revela visto${tiradaIncluida(t.id) ? '' : ' bloq'}" data-tirada="${t.id}"${tiradaIncluida(t.id) ? '' : ' data-bloq="1"'}>
+        ${tiradaIncluida(t.id) ? '' : `<span class="sello-p">${bloqueo((P) => (P.tiradas || {})[t.id] !== false)}</span>`}
         <span class="tendido" aria-hidden="true">${t.pos.map((p) => `<span class="puesto">${carta(back, estado.mazo)}<em>${p.nombre}</em></span>`).join('')}</span>
         <span class="precio">${TIRADA_INFO[t.id].min}</span>
         <h3>${t.nombre}</h3><p>${t.desc}</p><p class="para">${TIRADA_INFO[t.id].para}</p>
         <span class="sr">Posiciones: ${t.pos.map((p) => p.nombre).join(', ')}</span>
-        <span class="elegir">Elegir esta tirada</span>
+        <span class="elegir">${tiradaIncluida(t.id) ? 'Elegir esta tirada' : 'Descúbrela suscribiéndote →'}</span>
       </button>`).join('');
   }
   pintarTiradas();
   $('#listaTiradas').addEventListener('click', (e) => {
     const b = e.target.closest('[data-tirada]'); if (!b) return;
+    if (b.dataset.bloq) { irAPlanes('Esta tirada se abre con una suscripción. Mira los planes.'); return; }
     if (cupoAgotado()) { aviso(textoCupo()); return; }
     estado.tirada = TIRADAS.find((t) => t.id === b.dataset.tirada); ir('barajar');
   });
@@ -673,12 +712,41 @@
   }
   window.Nube.alCambiarUsuario(pintarCuenta);
 
+  /* Tarjetas de planes: salen de los perfiles que se editan en el admin. */
+  const PLAN_TEXTO = {
+    free: { lema: 'Para empezar hoy, sin tarjeta ni compromiso.', boton: 'Comenzar gratis' },
+    full: { lema: 'Para leer con regularidad y ver cada lectura completa.', boton: 'Suscribirme a Full', cinta: 'La más elegida' },
+    premium: { lema: 'Para vivir el tarot sin límites.', boton: 'Suscribirme a Premium', cinta: 'Sin límites' }
+  };
+  function pintarPlanes() {
+    const caja = $('#planesG'); if (!caja) return;
+    const T = window.Nube.todosPerfiles(), actual = window.Nube.usuario() ? window.Nube.perfil() : null;
+    caja.innerHTML = ['free', 'full', 'premium'].map((k) => {
+      const P = T[k] || {}, X = PLAN_TEXTO[k];
+      const li = (ok, t) => `<li${ok ? '' : ' class="no"'}>${t}</li>`;
+      const items = [li(true, 'Carta del día')]
+        .concat(TIRADAS.map((t) => li((P.tiradas || {})[t.id] !== false, t.nombre)))
+        .concat(MAZOS.filter((m) => !m.pendiente).map((m) => li((P.mazos || {})[m.id] !== false, `Mazo ${m.nombre}`)))
+        .concat([li(P.temaLibre !== false, 'Pregunta libre')])
+        .concat([li(true, typeof P.lecturasDia === 'number' ? `${P.lecturasDia} lecturas al día` : 'Lecturas sin límite')])
+        .concat([P.diario === false ? li(false, 'Guardar lecturas y notas') : li(true, typeof P.guardadas === 'number' ? `Guarda hasta ${P.guardadas} lecturas` : 'Diario sin límite')]);
+      const boton = actual === k ? '<button type="button" class="btn" disabled>Tu plan actual</button>'
+        : k === 'free' ? `<button type="button" class="btn" data-ir="mazo">${X.boton}</button>`
+          : `<button type="button" class="btn primario" data-suscribir="${k}">${X.boton}</button>`;
+      return `<li class="plan${k === 'full' ? ' dest' : ''} revela visto">${X.cinta ? `<p class="cinta">${X.cinta}</p>` : ''}
+        <h3>${NOMBRES_PLAN[k]}</h3><p class="lema">${X.lema}</p>
+        <p class="monto">${esc(P.precio || '')}</p><p class="periodo">${esc(P.periodo || '')}</p>
+        <ul>${items.join('')}</ul>${boton}</li>`;
+    }).join('');
+  }
+  pintarPlanes();
+
   function aplicarFunciones(f) {
     const r = document.documentElement.classList;
     r.toggle('f-sin-hoy', f.cartaDelDia === false);
     r.toggle('f-sin-desfile', f.desfile === false);
     r.toggle('f-sin-planes', f.planes === false);
-    pintarVitrina(); pintarDesfile(); pintarListaMazos(); pintarTiradas(); pintarTemas(); pintarCupo();
+    pintarVitrina(); pintarDesfile(); pintarListaMazos(); pintarTiradas(); pintarTemas(); pintarCupo(); pintarPlanes();
     const av = $('#avisoSitio');
     if (av) { const on = !!(f.aviso && f.aviso.activo && f.aviso.texto); av.hidden = !on; av.textContent = on ? f.aviso.texto : ''; }
     if (cuentaCaja) cuentaCaja.hidden = !(window.Nube.activa && f.cuentas !== false);
