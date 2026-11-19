@@ -664,7 +664,7 @@
     const ok = await confirmarModal({ titulo: `Suscribirte a ${NOMBRE_PERFIL[tier]}`, texto: `Vas a pasar a Mercado Pago para pagar ${P.precio || ''} ${P.periodo || 'al mes'}. Se renueva cada mes y puedes cancelar cuando quieras desde Mi perfil.`, boton: 'Ir a pagar', tono: 'normal' });
     if (!ok) return;
     const txt = boton && boton.textContent; if (boton) { boton.disabled = true; boton.textContent = 'Abriendo Mercado Pago…'; }
-    try { location.href = await window.Nube.suscribir(tier); }
+    try { const url = await window.Nube.suscribir(tier); try { localStorage.setItem('arcana.pago.v1', String(Date.now())); } catch (e) { /* sin almacenamiento */ } location.href = url; }
     catch (e) {
       if (boton) { boton.disabled = false; boton.textContent = txt; }
       aviso(e && e.message === 'sin-sesion' ? 'Entra a tu cuenta para suscribirte.' : (e && e.message && !/^error|^pagos/.test(e.message) ? e.message : 'No se pudo abrir el pago. Intenta de nuevo en un momento.'));
@@ -672,7 +672,10 @@
   }
   /* al volver de Mercado Pago: el servidor cambia el plan unos segundos después del pago */
   (function () {
-    const q = new URLSearchParams(location.search); if (q.get('pago') !== 'ok') return;
+    const q = new URLSearchParams(location.search);
+    /* Se confirma si volvió con ?pago=ok o si hace menos de 3 horas salió a pagar (por si Mercado Pago no devuelve el parámetro). Se usa una sola vez. */
+    let salio = 0; try { salio = Number(localStorage.getItem('arcana.pago.v1')) || 0; localStorage.removeItem('arcana.pago.v1'); } catch (e) { /* sin almacenamiento */ }
+    if (q.get('pago') !== 'ok' && !(salio && Date.now() - salio < 3 * 36e5)) return;
     try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) { /* sigue igual */ }
     aviso('Gracias. Estamos confirmando tu pago…');
     let n = 0;
