@@ -690,6 +690,19 @@
     }, 4000);
   })();
 
+  /* Respaldo silencioso: si alguien pagó y no volvió a la página (cerró la pestaña, pagó desde otro aparato), al abrir su sesión se confirma solo.
+     A lo más una vez cada 10 minutos por navegador, y el servidor solo consulta a Mercado Pago si hay un pago pendiente reciente. */
+  window.Nube.alCambiarUsuario((u) => {
+    if (!u || !window.Nube.pagosActivos()) return;
+    let ultimo = 0; try { ultimo = Number(localStorage.getItem('arcana.sync.v1')) || 0; } catch (e) { /* sin almacenamiento */ }
+    if (Date.now() - ultimo < 10 * 60e3) return;
+    try { localStorage.setItem('arcana.sync.v1', String(Date.now())); } catch (e) { /* idem */ }
+    const antes = window.Nube.perfil();
+    window.Nube.sincronizarPago().then(() => window.Nube.refrescarPerfil()).then((p) => {
+      if (p !== antes && (p === 'full' || p === 'premium')) aviso(`¡Listo! Tu plan ${NOMBRE_PERFIL[p]} ya está activo.`);
+    }).catch(() => { /* se reintenta en la próxima visita */ });
+  });
+
   /* Sin plan que guarde lecturas: se invita a entrar o a suscribirse, en vez de dejar un hueco. */
   function persuadirGuardar() {
     const entrar = desbloqueo((P) => P.diario !== false) === 'entrar';

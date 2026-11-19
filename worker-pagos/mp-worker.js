@@ -156,6 +156,11 @@ async function crearSuscripcion(request, env) {
   if (!persona) return json({ error: 'no encuentro tu ficha: abre Mi perfil y vuelve a intentar' }, 404);
   if (persona.porPago && persona.perfil === tier) return json({ error: 'ya tienes este plan' }, 409);
 
+  try { // si ya abrió un pago de este plan hace poco y no lo terminó, se le da el mismo enlace (así no se crean suscripciones dobles)
+    const reciente = (await fsConsultar(env, 'pagos', 'uid', yo.uid)).filter((x) => x.datos.estado === 'pendiente' && x.datos.tier === tier && x.datos.initPoint && Date.now() - Number(x.datos.creado || 0) < 30 * 60e3)
+      .sort((p, q) => Number(q.datos.creado || 0) - Number(p.datos.creado || 0))[0];
+    if (reciente) return json({ init_point: reciente.datos.initPoint });
+  } catch (e) { /* si no se puede mirar, se crea uno nuevo */ }
   const token = crypto.randomUUID();
   const referencia = 'arc_' + yo.uid + '_' + token;
   const host = new URL(request.url).host;
@@ -170,8 +175,9 @@ async function crearSuscripcion(request, env) {
       notification_url: 'https://' + host + '/mp-webhook',
       status: 'pending'
     });
-    await fsEscribir(env, 'pagos/' + token, { preapprovalId: s.id }, true);
-    return json({ init_point: s.init_point || s.sandbox_init_point });
+    const enlace = s.init_point || s.sandbox_init_point;
+    await fsEscribir(env, 'pagos/' + token, { preapprovalId: s.id, initPoint: enlace }, true);
+    return json({ init_point: enlace });
   } catch (e) {
     console.error('crear-suscripcion: ' + String((e && e.message) || e).slice(0, 600));
     return json({ error: 'no se pudo iniciar el pago, intenta de nuevo' }, 500);
@@ -229,7 +235,9 @@ async function aplicarSuscripcion(env, info) {
     // un plan asignado a mano y más alto no se baja por un pago de un plan menor
     const manualMayor = !persona.porPago && (RANGO[persona.perfil] || 0) > (RANGO[pendiente.tier] || 0);
     if (manualMayor || (persona.porPago && persona.perfil === pendiente.tier && persona.mpId === String(info.id))) return 'sin-cambio';
+    const anterior = persona.porPago && persona.mpId && persona.mpId !== String(info.id) ? persona.mpId : null;
     await fsEscribir(env, 'personas/' + uid, { perfil: pendiente.tier, porPago: true, mpId: String(info.id) }, true);
+    if (anterior) { try { await mp(env, 'PUT', '/preapproval/' + encodeURIComponent(anterior), { status: 'cancelled' }); } catch (e) { console.error('cancelar la suscripción anterior: ' + String((e && e.message) || e).slice(0, 300)); } } // evita cobrar dos planes a la vez
     return 'activado';
   }
   if ((info.status === 'cancelled' || info.status === 'paused') && persona.porPago && persona.mpId === String(info.id)) {
