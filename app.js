@@ -143,9 +143,10 @@
   }
 
   /* ---------- confirmar antes de borrar (modal) ---------- */
-  function confirmarModal({ titulo, texto, boton = 'Borrar', tono = 'peligro' }) {
+  function confirmarModal({ titulo, texto, boton = 'Borrar', tono = 'peligro', terminos = false }) {
     return new Promise((resolver) => {
       const d = $('#modalConfirmar'); if (!d || !d.showModal) { resolver(window.confirm(`${titulo}\n\n${texto}`)); return; }
+      const enl = $('#mcEnlace'); if (enl) enl.hidden = !terminos;
       $('#mcTitulo').textContent = titulo; $('#mcTexto').textContent = texto; $('#mcAceptar').textContent = boton; $('#mcAceptar').className = 'btn ' + (tono === 'normal' ? 'primario' : 'peligro');
       let hecho = false;
       const fin = (v) => { if (hecho) return; hecho = true; limpiar(); if (d.open) d.close(); resolver(v); };
@@ -661,7 +662,7 @@
     if (!window.Nube.pagosActivos()) { aviso('Los cobros se activan muy pronto. Tu cuenta ya queda lista para suscribirte.'); return; }
     if (window.Nube.cobrosEnPausa()) { aviso('Los cobros están en pausa por mantenimiento. Tu plan actual no se ve afectado; intenta de nuevo más tarde.'); return; }
     const T = window.Nube.todosPerfiles(), P = T[tier] || {};
-    const ok = await confirmarModal({ titulo: `Suscribirte a ${NOMBRE_PERFIL[tier]}`, texto: `Vas a pasar a Mercado Pago para pagar ${P.precio || ''} ${P.periodo || 'al mes'}. Se renueva cada mes y puedes cancelar cuando quieras desde Mi perfil.`, boton: 'Ir a pagar', tono: 'normal' });
+    const ok = await confirmarModal({ titulo: `Suscribirte a ${NOMBRE_PERFIL[tier]}`, texto: `Vas a pasar a Mercado Pago para pagar ${P.precio || ''} ${P.periodo || 'al mes'}. Se renueva cada mes y puedes cancelar cuando quieras desde Mi perfil.`, boton: 'Ir a pagar', tono: 'normal' , terminos: true });
     if (!ok) return;
     const txt = boton && boton.textContent; if (boton) { boton.disabled = true; boton.textContent = 'Abriendo Mercado Pago…'; }
     try { const url = await window.Nube.suscribir(tier); try { localStorage.setItem('arcana.pago.v1', String(Date.now())); } catch (e) { /* sin almacenamiento */ } location.href = url; }
@@ -1095,6 +1096,7 @@
     const crear = modoCuenta === 'crear';
     return `<p class="bajada">Entra para tener tu perfil, un avatar místico y tu carta del día fija al actualizar. Es opcional: puedes leer sin cuenta.</p>
       <div class="cuenta"><div class="acciones"><button type="button" class="btn primario chico" id="btnEntrar">Entrar con Google</button></div>
+      <p class="acepto">Al entrar o crear tu cuenta aceptas los <a href="terminos.html" target="_blank" rel="noopener">Términos y condiciones</a> y el tratamiento de tus datos según la <a href="terminos.html#datos" target="_blank" rel="noopener">política de privacidad</a>.</p>
       <p class="o">o con tu correo y contraseña</p>
       <form id="formCorreo" novalidate>
         ${crear ? '<label class="campo" for="cNombre">Tu nombre <span>(opcional)</span></label><input id="cNombre" type="text" maxlength="80" autocomplete="name">' : ''}
@@ -1231,7 +1233,7 @@
     const caja = $('#planesG'); if (!caja) return;
     const T = window.Nube.todosPerfiles(), actual = window.Nube.usuario() ? window.Nube.perfil() : null;
     const inv = $('#planesInv'); if (inv) inv.hidden = !esInvitado();
-    const nota = $('#planesNota'); if (nota) nota.textContent = window.Nube.cobrosEnPausa() ? 'Los cobros están en pausa por mantenimiento. Si ya tienes un plan, sigue activo. Precios en pesos chilenos.' : window.Nube.pagosActivos() ? 'Pagos con Mercado Pago, tarjeta o transferencia. Se renuevan cada mes y puedes cancelar cuando quieras desde Mi perfil. Precios en pesos chilenos.' : 'Los cobros se activan muy pronto: crea tu cuenta hoy y quedarás lista o listo para suscribirte cuando abran. Precios en pesos chilenos.';
+    const nota = $('#planesNota'); if (nota) nota.innerHTML = (window.Nube.cobrosEnPausa() ? 'Los cobros están en pausa por mantenimiento. Si ya tienes un plan, sigue activo. Precios en pesos chilenos.' : window.Nube.pagosActivos() ? 'Pagos con Mercado Pago, tarjeta o transferencia. Se renuevan cada mes y puedes cancelar cuando quieras desde Mi perfil. Precios en pesos chilenos.' : 'Los cobros se activan muy pronto: crea tu cuenta hoy y quedarás lista o listo para suscribirte cuando abran. Precios en pesos chilenos.') + ' <a href="terminos.html" target="_blank" rel="noopener">Términos y condiciones</a>.';
     caja.innerHTML = ['free', 'full', 'premium'].map((k) => {
       const P = T[k] || {}, X = PLAN_TEXTO[k];
       const li = (ok, t) => `<li${ok ? '' : ' class="no"'}>${t}</li>`;
