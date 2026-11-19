@@ -216,6 +216,12 @@
       if (!r.ok) throw new Error(d.error || 'error-cancelar');
       await leerPerfil(u, c);
     },
+    /* Pregunta al servidor de pagos si el pago ya quedó aprobado (por si el aviso de Mercado Pago no llegó). */
+    async sincronizarPago() {
+      const base = window.ARCANA_PAGOS; if (!base) return;
+      const c = await conectar(); const u = c && c.auth.currentUser; if (!u || u.isAnonymous) return;
+      try { await fetch(base.replace(/\/$/, '') + '/sincronizar-suscripcion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken: await u.getIdToken() }) }); } catch (e) { /* se reintenta */ }
+    },
     /* Vuelve a leer el plan de la cuenta (después de pagar, el servidor lo cambia unos segundos más tarde). */
     async refrescarPerfil() { const c = await conectar(); const u = c && c.auth.currentUser; if (u && !u.isAnonymous) await leerPerfil(u, c); return miPerfil; },
     async guardarFicha(cambios) {

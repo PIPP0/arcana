@@ -679,6 +679,7 @@
     const t = setInterval(async () => {
       n++;
       try {
+        await window.Nube.sincronizarPago();
         const p = await window.Nube.refrescarPerfil();
         if (p === 'full' || p === 'premium') { clearInterval(t); sfx.entrega(true); aviso(`¡Listo! Ahora tienes el plan ${NOMBRE_PERFIL[p]}.`); return; }
       } catch (e) { /* se reintenta */ }

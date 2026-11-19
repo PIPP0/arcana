@@ -162,7 +162,7 @@ async function crearSuscripcion(request, env) {
   try {
     await fsEscribir(env, 'pagos/' + token, { uid: yo.uid, tier, email: yo.email, estado: 'pendiente', creado: Date.now() });
     const s = await mp(env, 'POST', '/preapproval', {
-      reason: 'ARCANA · Plan ' + NOMBRE_PLAN[tier],
+      reason: 'ARCANA - Plan ' + NOMBRE_PLAN[tier],
       external_reference: referencia,
       payer_email: yo.email,
       auto_recurring: { frequency: 1, frequency_type: 'months', transaction_amount: PLAN_PRECIOS[tier], currency_id: 'CLP' },
@@ -173,9 +173,27 @@ async function crearSuscripcion(request, env) {
     await fsEscribir(env, 'pagos/' + token, { preapprovalId: s.id }, true);
     return json({ init_point: s.init_point || s.sandbox_init_point });
   } catch (e) {
-    console.error('crear-suscripcion', e);
+    console.error('crear-suscripcion: ' + String((e && e.message) || e).slice(0, 600));
     return json({ error: 'no se pudo iniciar el pago, intenta de nuevo' }, 500);
   }
+}
+
+/* Al volver de pagar, el sitio pregunta aquí si el pago ya quedó aprobado: se consulta a Mercado Pago directo (no depende de que llegue el aviso). */
+async function sincronizarSuscripcion(request, env) {
+  if (!ORIGENES[request.headers.get('Origin')]) return json({ error: 'origen no permitido' }, 403);
+  let b; try { b = await request.json(); } catch (e) { return json({ error: 'cuerpo inválido' }, 400); }
+  const yo = await personaDeSesion(b && b.idToken);
+  if (!yo) return json({ error: 'sesión inválida' }, 401);
+  let cambios = 0;
+  try {
+    const mios = (await fsConsultar(env, 'pagos', 'uid', yo.uid))
+      .filter((x) => x.datos.preapprovalId && x.datos.estado === 'pendiente' && Date.now() - Number(x.datos.creado || 0) < 3 * 864e5)
+      .sort((a, c) => Number(c.datos.creado || 0) - Number(a.datos.creado || 0)).slice(0, 3);
+    for (const x of mios) {
+      if ((await aplicarSuscripcion(env, await mp(env, 'GET', '/preapproval/' + encodeURIComponent(x.datos.preapprovalId)))) === 'activado') cambios++;
+    }
+  } catch (e) { console.error('sincronizar: ' + String((e && e.message) || e).slice(0, 600)); return json({ ok: false }, 500); }
+  return json({ ok: true, cambios });
 }
 
 async function cancelarSuscripcion(request, env) {
@@ -190,7 +208,7 @@ async function cancelarSuscripcion(request, env) {
     await fsEscribir(env, 'personas/' + yo.uid, { perfil: 'free', porPago: false }, true);
     return json({ ok: true });
   } catch (e) {
-    console.error('cancelar-suscripcion', e);
+    console.error('cancelar-suscripcion: ' + String((e && e.message) || e).slice(0, 600));
     return json({ error: 'no se pudo cancelar, intenta de nuevo' }, 500);
   }
 }
@@ -206,7 +224,7 @@ async function aplicarSuscripcion(env, info) {
   if (monto !== PLAN_PRECIOS[pendiente.tier]) return 'sin-cambio'; // el monto cobrado debe ser el del plan
   const persona = await fsLeer(env, 'personas/' + uid);
   if (!persona) return 'sin-cambio';
-  await fsEscribir(env, 'pagos/' + token, { estado: info.status === 'authorized' ? 'activa' : info.status, mpStatus: info.status, actualizado: Date.now() }, true);
+  await fsEscribir(env, 'pagos/' + token, { estado: info.status === 'authorized' ? 'activa' : (info.status === 'pending' ? 'pendiente' : info.status), mpStatus: info.status, actualizado: Date.now() }, true);
   if (info.status === 'authorized') {
     // un plan asignado a mano y más alto no se baja por un pago de un plan menor
     const manualMayor = !persona.porPago && (RANGO[persona.perfil] || 0) > (RANGO[pendiente.tier] || 0);
@@ -231,7 +249,7 @@ async function webhook(request, env, url) {
     await aplicarSuscripcion(env, await mp(env, 'GET', '/preapproval/' + encodeURIComponent(id))); // el estado real, no el que dice el aviso
   } catch (e) {
     // no relanzar: si respondemos distinto de 2xx, Mercado Pago reintenta la notificación sin parar
-    console.error('mp-webhook', e);
+    console.error('mp-webhook: ' + String((e && e.message) || e).slice(0, 600));
   }
   return json({ ok: true });
 }
@@ -276,6 +294,7 @@ async function enrutar(request, env) {
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: { 'Access-Control-Allow-Methods': 'POST, GET, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' } });
   if (url.pathname === '/crear-suscripcion' && request.method === 'POST') return crearSuscripcion(request, env);
   if (url.pathname === '/cancelar-suscripcion' && request.method === 'POST') return cancelarSuscripcion(request, env);
+  if (url.pathname === '/sincronizar-suscripcion' && request.method === 'POST') return sincronizarSuscripcion(request, env);
   if (url.pathname === '/mp-webhook' && (request.method === 'POST' || request.method === 'GET')) return webhook(request, env, url);
   if (url.pathname === '/') return json({ ok: true, servicio: 'arcana-pagos' });
   return json({ error: 'no encontrado' }, 404);
