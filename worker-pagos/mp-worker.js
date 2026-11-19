@@ -35,6 +35,7 @@ const ORIGENES = {
 const PLAN_PRECIOS = { full: 3990, premium: 6990 };
 const NOMBRE_PLAN = { full: 'Full', premium: 'Premium' };
 const RANGO = { free: 0, full: 1, premium: 2 };
+const CUPO_DEFECTO = 30; // suscripciones pagadas simultáneas durante el lanzamiento
 
 const FS = `https://firestore.googleapis.com/v1/projects/${PROYECTO}/databases/(default)/documents`;
 
@@ -156,6 +157,15 @@ async function crearSuscripcion(request, env) {
   if (!persona) return json({ error: 'no encuentro tu ficha: abre Mi perfil y vuelve a intentar' }, 404);
   if (persona.porPago && persona.perfil === tier) return json({ error: 'ya tienes este plan' }, 409);
 
+  /* Cupo de lanzamiento: hasta CUPO suscripciones pagadas a la vez (se puede cambiar con config/funciones.cupoSuscripciones). Quien ya tiene un plan pagado y sube de plan no ocupa otro cupo. */
+  if (!persona.porPago) {
+    try {
+      const f = await fsLeer(env, 'config/funciones'); const cupo = f && Number.isFinite(Number(f.cupoSuscripciones)) ? Number(f.cupoSuscripciones) : CUPO_DEFECTO;
+      const activos = new Set((await fsConsultar(env, 'personas', 'porPago', true)).map((x) => x.id));
+      const enCurso = (await fsConsultar(env, 'pagos', 'estado', 'pendiente')).filter((x) => x.datos.uid !== yo.uid && !activos.has(x.datos.uid) && Date.now() - Number(x.datos.creado || 0) < 30 * 60e3).map((x) => x.datos.uid);
+      if (activos.size + new Set(enCurso).size >= cupo) return json({ error: 'Los cupos de lanzamiento están completos por ahora. Anotamos tu interés y te avisamos apenas se abran más.', cupoLleno: true }, 409);
+    } catch (e) { console.error('cupo: ' + String((e && e.message) || e).slice(0, 300)); /* si no se puede contar, no se bloquea */ }
+  }
   try { // si ya abrió un pago de este plan hace poco y no lo terminó, se le da el mismo enlace (así no se crean suscripciones dobles)
     const reciente = (await fsConsultar(env, 'pagos', 'uid', yo.uid)).filter((x) => x.datos.estado === 'pendiente' && x.datos.tier === tier && x.datos.initPoint && Date.now() - Number(x.datos.creado || 0) < 30 * 60e3)
       .sort((p, q) => Number(q.datos.creado || 0) - Number(p.datos.creado || 0))[0];

@@ -13,8 +13,8 @@
   const MAZOS = { rws: 'Rider-Waite-Smith', dodal: 'Tarot de Marsella', sola: 'Sola-Busca' };
   const TEMAS = { general: 'Reflexión general', amor: 'Amor y relaciones', trabajo: 'Trabajo y proyectos', crecimiento: 'Crecimiento personal', decisiones: 'Decisiones', libre: 'Pregunta libre' };
   const TIRADAS = { una: 'Una carta', tiempo: 'Tres cartas', perspectivas: 'Tres perspectivas' };
-  const PASOS = [['inicio', 'Portada'], ['mazo', 'Elige mazo'], ['intencion', 'Elige tema'], ['tirada', 'Elige tirada'], ['barajar', 'Baraja'], ['elegir', 'Elige cartas'], ['lectura', 'Revela']];
-  const DEF = { cobros: true, cartaDelDia: true, desfile: true, planes: true, cuentas: true, medicion: true, mazos: { rws: true, dodal: true, sola: true }, aviso: { activo: false, texto: '' } };
+  const PASOS = [['inicio', 'Portada'], ['mazo', 'Elige mazo'], ['intencion', 'Elige tema'], ['tirada', 'Elige tirada'], ['barajar', 'Baraja'], ['elegir', 'Elige cartas'], ['lectura', 'Revela'], ['quiero-full', 'Le interesa Full'], ['quiero-premium', 'Le interesa Premium']];
+  const DEF = { cobros: true, cobrosAbiertos: false, cartaDelDia: true, desfile: true, planes: true, cuentas: true, medicion: true, mazos: { rws: true, dodal: true, sola: true }, aviso: { activo: false, texto: '' } };
   const T3 = { una: true, tiempo: true, perspectivas: true };
   const PERF_DEF = {
     invitado: { precio: '', periodo: '', sonido: true, estilos: { 1: true, 2: false, 3: false, 4: false, 5: false }, calendario: false, tiradas: { una: true, tiempo: false, perspectivas: false }, mazos: { rws: true, dodal: false, sola: false }, temaLibre: false, diario: false, lecturasDia: 3, guardadas: 0, recuperarDias: 0 },
@@ -327,6 +327,7 @@
     let h = cabeza('Funciones', 'Enciende o apaga partes del sitio sin tocar el código. Nada se borra: al apagar algo, solo se oculta, y se puede volver a encender.', `<button type="button" class="btn chico" id="recargar">Actualizar</button>`);
     h += `<div class="tarjeta"><h2>Interruptores</h2><p class="nota">Los cambios llegan a las visitas en su próxima carga (el navegador recuerda la última configuración).</p>
       <div class="tabla-c"><table><thead><tr><th>Función</th><th>Estado</th><th>Uso medido (${E.rango} días)</th></tr></thead><tbody>
+      ${fila('f_cobrosAbiertos', 'Abrir cobros al público', 'Apagado: «Suscribirme» solo anota el interés de la persona (lo ves en el embudo del Resumen) y nadie paga. Enciéndelo recién cuando el servidor de pagos use el token de PRODUCCIÓN de Mercado Pago.', f.cobrosAbiertos === true, 'Mercado Pago')}
       ${fila('f_cobros', 'Cobros (botón Suscribirme)', 'Si lo apagas, nadie puede iniciar un pago nuevo (ni desde el sitio ni por el servidor de pagos). Quienes ya pagaron conservan su plan.', f.cobros, E.perfiles ? 'Mercado Pago' : 'Mercado Pago')}
       ${fila('f_cartaDelDia', 'Carta del día', 'Sección de la portada donde se voltea una carta.', f.cartaDelDia, `${n0(c.hoy)} reveladas · ${pct(c.hoy, sesN)} de las visitas`)}
       ${fila('f_desfile', 'Desfile de cartas', 'Tira de cartas en movimiento bajo la portada.', f.desfile, 'Decorativo, no se mide')}
@@ -456,7 +457,7 @@
     const cp = $('#csvPersonas'); if (cp) cp.onclick = () => descargar('arcana-personas.csv', [['persona', 'tipo', 'correo', 'perfil', 'entro', 'ultimo', 'visitas', 'lecturas', 'equipo']].concat(filtrarFilas(filasPersonas(calc())).map((f) => [f.nombre, f.tipo, f.correo === '—' ? '' : f.correo, f.tipo === 'cuenta' ? (f.p.perfil || 'free') : '', f.entro ? new Date(f.entro).toISOString() : '', f.ultimo ? new Date(f.ultimo).toISOString() : '', f.visitas, f.lect, nombreEquipo(f.disp)])));
     const cl = $('#csvLecturas'); if (cl) cl.onclick = () => descargar('arcana-lecturas.csv', [['fecha', 'mazo', 'tema', 'tirada', 'cartas', 'con_pregunta', 'equipo']].concat(E.datos.lecturas.map((l) => [l.fecha ? l.fecha.toISOString() : '', l.mazo, l.tema, l.tirada, (l.cartas || []).map(nombreCarta).join(' | '), l.pregunta ? 'si' : 'no', l.disp])));
     // funciones
-    const map = { f_cobros: (v) => { E.edit.cobros = v; }, f_cartaDelDia: (v) => { E.edit.cartaDelDia = v; }, f_desfile: (v) => { E.edit.desfile = v; }, f_planes: (v) => { E.edit.planes = v; }, f_cuentas: (v) => { E.edit.cuentas = v; }, f_medicion: (v) => { E.edit.medicion = v; }, f_aviso: (v) => { E.edit.aviso.activo = v; } };
+    const map = { f_cobros: (v) => { E.edit.cobros = v; }, f_cobrosAbiertos: (v) => { E.edit.cobrosAbiertos = v; }, f_cartaDelDia: (v) => { E.edit.cartaDelDia = v; }, f_desfile: (v) => { E.edit.desfile = v; }, f_planes: (v) => { E.edit.planes = v; }, f_cuentas: (v) => { E.edit.cuentas = v; }, f_medicion: (v) => { E.edit.medicion = v; }, f_aviso: (v) => { E.edit.aviso.activo = v; } };
     Object.keys(MAZOS).forEach((k) => { map['f_m_' + k] = (v) => { E.edit.mazos[k] = v; }; });
     Object.keys(map).forEach((id) => { const i = $('#' + id); if (i) i.onchange = () => {
       if (id.startsWith('f_m_') && !i.checked && Object.keys(MAZOS).filter((k) => E.edit.mazos[k]).length <= 1) { i.checked = true; aviso('Debe quedar al menos un mazo encendido.'); return; }

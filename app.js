@@ -658,7 +658,16 @@
   }
 
   /* ---------- pago con Mercado Pago ---------- */
+  /* Mientras los cobros no están abiertos: se anota el interés (queda en el embudo del admin) y se invita a crear cuenta para avisarle. */
+  async function anotarInteres(tier) {
+    window.Nube.vista('quiero-' + tier);
+    if (esInvitado()) {
+      const ok = await confirmarModal({ titulo: '¡Anotado, gracias!', texto: `Todavía no abrimos los cobros del plan ${NOMBRE_PERFIL[tier]}. Crea tu cuenta gratis y te avisaremos al correo apenas abran.`, boton: 'Crear mi cuenta gratis', tono: 'normal' });
+      if (ok) irEntrar();
+    } else aviso(`¡Anotado! Te avisaremos al correo de tu cuenta apenas abramos el plan ${NOMBRE_PERFIL[tier]}.`);
+  }
   async function iniciarPago(tier, boton) {
+    if (!window.Nube.cobrosAbiertos()) { await anotarInteres(tier); return; }
     if (!window.Nube.pagosActivos()) { aviso('Los cobros se activan muy pronto. Tu cuenta ya queda lista para suscribirte.'); return; }
     if (window.Nube.cobrosEnPausa()) { aviso('Los cobros están en pausa por mantenimiento. Tu plan actual no se ve afectado; intenta de nuevo más tarde.'); return; }
     const T = window.Nube.todosPerfiles(), P = T[tier] || {};
@@ -1233,7 +1242,7 @@
     const caja = $('#planesG'); if (!caja) return;
     const T = window.Nube.todosPerfiles(), actual = window.Nube.usuario() ? window.Nube.perfil() : null;
     const inv = $('#planesInv'); if (inv) inv.hidden = !esInvitado();
-    const nota = $('#planesNota'); if (nota) nota.innerHTML = (window.Nube.cobrosEnPausa() ? 'Los cobros están en pausa por mantenimiento. Si ya tienes un plan, sigue activo. Precios en pesos chilenos.' : window.Nube.pagosActivos() ? 'Pagos con Mercado Pago, tarjeta o transferencia. Se renuevan cada mes y puedes cancelar cuando quieras desde Mi perfil. Precios en pesos chilenos.' : 'Los cobros se activan muy pronto: crea tu cuenta hoy y quedarás lista o listo para suscribirte cuando abran. Precios en pesos chilenos.') + ' <a href="terminos.html" target="_blank" rel="noopener">Términos y condiciones</a>.';
+    const nota = $('#planesNota'); if (nota) nota.innerHTML = (!window.Nube.cobrosAbiertos() ? 'Los cobros abren muy pronto. Pulsa «Me interesa este plan» y te avisaremos apenas abran. Precios en pesos chilenos.' : window.Nube.cobrosEnPausa() ? 'Los cobros están en pausa por mantenimiento. Si ya tienes un plan, sigue activo. Precios en pesos chilenos.' : window.Nube.pagosActivos() ? 'Pagos con Mercado Pago, tarjeta o transferencia. Se renuevan cada mes y puedes cancelar cuando quieras desde Mi perfil. Precios en pesos chilenos.' : 'Los cobros se activan muy pronto: crea tu cuenta hoy y quedarás lista o listo para suscribirte cuando abran. Precios en pesos chilenos.') + ' <a href="terminos.html" target="_blank" rel="noopener">Términos y condiciones</a>.';
     caja.innerHTML = ['free', 'full', 'premium'].map((k) => {
       const P = T[k] || {}, X = PLAN_TEXTO[k];
       const li = (ok, t) => `<li${ok ? '' : ' class="no"'}>${t}</li>`;
@@ -1248,7 +1257,7 @@
         .concat([P.diario === false ? li(false, 'Guardar lecturas y notas') : li(true, typeof P.guardadas === 'number' ? `Guarda hasta ${P.guardadas} lecturas` : 'Diario sin límite')]);
       const boton = actual === k ? '<button type="button" class="btn" disabled>Tu plan actual</button>'
         : k === 'free' ? (esInvitado() ? '<button type="button" class="btn primario" data-entrar="1">Crear mi cuenta gratis</button>' : `<button type="button" class="btn" data-ir="mazo">${X.boton}</button>`)
-          : `<button type="button" class="btn${k === 'premium' ? ' primario' : ''}" data-suscribir="${k}">${X.boton}</button>`;
+          : `<button type="button" class="btn${k === 'premium' ? ' primario' : ''}" data-suscribir="${k}">${window.Nube.cobrosAbiertos() ? X.boton : 'Me interesa este plan'}</button>`;
       return `<li class="plan${k === 'premium' ? ' dest' : ''} revela visto">${X.cinta ? `<p class="cinta">${X.cinta}</p>` : ''}
         <h3>${NOMBRES_PLAN[k]}</h3><p class="lema">${X.lema}</p>
         <p class="monto">${esc(P.precio || '')}</p><p class="periodo">${esc(P.periodo || '')}</p>
