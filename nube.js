@@ -105,7 +105,7 @@
   /* ---------- medición anónima ---------- */
   const ses = { sid: aleatorio(20), v: idVisitante(), uid: null, dia: hoyChile(), disp: disp(), vistas: {}, lecturas: 0, cartaHoy: false, creada: false };
   let sucia = false, reloj = null;
-  function marcar() { sucia = true; if (!reloj) reloj = setTimeout(volcar, 7000); }
+  function marcar() { sucia = true; if (!reloj) reloj = setTimeout(volcar, 20000); }
   async function volcar() {
     reloj = null;
     if (!sucia || !midiendo()) return;
@@ -127,6 +127,7 @@
     } catch (e) { sucia = true; }
   }
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && sucia) volcar(); });
+  window.addEventListener('pagehide', () => { if (sucia) volcar(); });
 
   /* ---------- cuentas (opcional) ---------- */
   async function tocarPersona(u, c, forzar) {
