@@ -659,6 +659,21 @@
   visor.addEventListener('click', (e) => { if (e.target === visor) visor.close(); });
   $('#interpretacion').addEventListener('click', (e) => { const b = e.target.closest('[data-ver]'); if (b) ampliar(Number(b.dataset.ver)); });
 
+  /* Lectura en profundidad: sale de lo que de verdad dice cada carta (sus claves, su luz y su sombra), no de frases generales. */
+  function profundo(ks, tid) {
+    const cl = (k) => { const a = k.claves.split(' · ').map((x) => x.toLowerCase()); return a.length > 1 ? `${a[0]} y ${a[1]}` : a[0]; };
+    const t = tid || 'perspectivas';
+    if (ks.length === 1) return `<p><b>Lo que esta carta te pide mirar.</b> ${ks[0].nombre} habla de ${cl(ks[0])}. ${ks[0].luz} ${ks[0].sombra}</p>`;
+    const [a, b, c] = ks;
+    const une = `<p><b>Lo que une a tus cartas.</b> ${a.nombre} pone sobre la mesa ${cl(a)}; ${b.nombre} lo atraviesa con ${cl(b)}; y ${c.nombre} apunta hacia ${cl(c)}. No son tres mensajes sueltos: cada una cambia el sentido de la siguiente.</p>`;
+    const atencion = `<p><b>Lo que pide atención.</b> ${b.sombra}</p>`;
+    const invita = `<p><b>Lo que te invita.</b> ${c.luz}</p>`;
+    const q = t === 'tiempo'
+      ? `¿Qué de ${a.hilo} quieres llevar contigo hacia ${c.hilo}, y qué prefieres soltar por el camino?`
+      : `¿Qué cambiaría si miraras ${b.hilo} no como un obstáculo, sino como el puente hacia ${c.hilo}?`;
+    return une + atencion + invita + `<p><b>Para llevarte.</b> ${q}</p>`;
+  }
+
   function sintesis(ks, tid) {
     const t = tid || (estado.tirada && estado.tirada.id);
     let s;
@@ -692,7 +707,7 @@
         <p class="significa">${k.esencia}</p>
         <p class="rot">Para ti</p><p class="texto">${reflexion(pos[i].id, k, p.tema)}</p>${nota ? `<p class="nota-mazo">${nota}</p>` : ''}</div></article>`;
     }).join('');
-    h += `<section class="sintesis"><h3>${ks.length === 1 ? 'En síntesis' : 'Leídas en conjunto'}</h3><p>${sintesis(ks, p.tirada)}</p>${p.pregunta ? `<p>Vuelve ahora a tu pregunta. Leída desde ${centro.hilo}, ¿qué respuesta se asoma que no tenías antes de barajar?</p>` : ''}<p>${tema.cierre}</p></section>`;
+    h += `<section class="sintesis"><h3>${ks.length === 1 ? 'En síntesis' : 'Leídas en conjunto'}</h3><p>${sintesis(ks, p.tirada)}</p>${profundo(ks, p.tirada)}${p.pregunta ? `<p>Vuelve ahora a tu pregunta. Leída desde ${centro.hilo}, ¿qué respuesta se asoma que no tenías antes de barajar?</p>` : ''}<p>${tema.cierre}</p></section>`;
     h += `<section><h3>Preguntas para ti</h3><ul>${ks.map((k) => `<li>${k.pregunta}</li>`).join('')}${PREG_TEMA[p.tema] ? `<li>${PREG_TEMA[p.tema](centro.hilo)}</li>` : ''}</ul></section>`;
     h += `<section><h3>Para seguir explorando</h3><ul>${tema.acciones.map((a) => `<li>${a}</li>`).join('')}</ul></section>`;
     h += `<p class="descargo">Esta es una interpretación simbólica, pensada para reflexionar. No predice lo que va a pasar ni reemplaza el consejo de un profesional.</p>`;
