@@ -439,6 +439,8 @@
 
   /* entradas por tema */
   const TEMA_IMG = { amor: 6, trabajo: 66, decisiones: 7, crecimiento: 9, general: 17, libre: 2 };
+  /* Miniaturas de los temas: las del mazo elegido. Un mazo personalizado puede traer las suyas (imgTemas) si aún no tiene todos los Arcanos Mayores. */
+  const imgTema = (id) => { const m = persDe(estado.mazo); return m && m.imgTemas && Number.isInteger(m.imgTemas[id]) ? m.imgTemas[id] : TEMA_IMG[id]; };
   $('#temasPortada').innerHTML = ['amor', 'trabajo', 'decisiones', 'crecimiento', 'general'].map((id) =>
     `<button type="button" class="tema-p" data-tema-ir="${id}"><img src="${src('rws', TEMA_IMG[id])}" alt="" loading="lazy" decoding="async"><span>${TEMAS.find((t) => t.id === id).nombre}</span></button>`).join('');
   $('#temasPortada').addEventListener('click', (e) => {
@@ -500,7 +502,7 @@
     if (!temasPermitidos().some((t) => t.id === estado.tema)) estado.tema = 'general';
     $('#listaTemas').innerHTML = TEMAS.map((t) => {
       const bl = t.id === 'libre' && permisos().temaLibre === false;
-      return `<button type="button" class="tema-p${bl ? ' bloq' : ''}" role="radio" aria-checked="${t.id === estado.tema}" data-tema="${t.id}"${bl ? ' data-bloq="1"' : ''} tabindex="${t.id === estado.tema ? 0 : -1}"><img src="${src(estado.mazo, TEMA_IMG[t.id])}" alt="" decoding="async"><span>${t.nombre}${bl ? `<small>${invitacion((P) => P.temaLibre !== false)}</small>` : ''}</span></button>`;
+      return `<button type="button" class="tema-p${bl ? ' bloq' : ''}" role="radio" aria-checked="${t.id === estado.tema}" data-tema="${t.id}"${bl ? ' data-bloq="1"' : ''} tabindex="${t.id === estado.tema ? 0 : -1}"><img src="${src(estado.mazo, imgTema(t.id))}" alt="" decoding="async"><span>${t.nombre}${bl ? `<small>${invitacion((P) => P.temaLibre !== false)}</small>` : ''}</span></button>`;
     }).join('');
   }
   pintarTemas();
