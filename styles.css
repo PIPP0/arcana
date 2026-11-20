@@ -865,3 +865,7 @@ html, body { overflow-x: clip; }
 .pie .legales a, .acepto a, #mcEnlace a, .nota a { color: var(--oro); text-underline-offset: 3px; }
 .acepto { font-size: .86rem; color: var(--lavanda); margin: 10px 0 0; line-height: 1.5; }
 #mcEnlace { font-size: .86rem; margin-top: 12px; }
+
+/* ---------- Tarot personalizados ---------- */
+.pers-acceso { text-align: center; margin: 34px auto 6px; max-width: 34em; }
+.pers-acceso p { margin: 0 0 12px; color: var(--lavanda); font-size: .98rem; }

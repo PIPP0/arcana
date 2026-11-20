@@ -29,7 +29,22 @@
         'Tulio', 'Carbone', 'Catone', 'Bocho', 'Metelo', 'Olivo', 'Ipeo', 'Lentulo', 'Sabino', 'Nenbroto', 'Nabuchodenasor'],
       propios: true }
   ];
-  const mazoDe = (id) => MAZOS.find((m) => m.id === id) || MAZOS[0];
+  /* Tarot personalizados: mazos clásicos de 78 cartas con arte propio. Se definen en mazos-pers.js (cada uno con su carpeta de imágenes). */
+  const PERS = (window.ARCANA_MAZOS_PERS || []).filter((m) => m && m.id);
+  const mazoDe = (id) => MAZOS.find((m) => m.id === id) || PERS.find((m) => m.id === id) || MAZOS[0];
+  const persDe = (id) => PERS.find((m) => m.id === id);
+  const rutaMazo = (id) => (persDe(id) ? persDe(id).ruta : 'img/' + id);
+  const cartaDisponible = (i, id) => !(persDe(id) && (persDe(id).faltan || []).includes(i));
+  const localDev = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+  /* Quién ve cada mazo personalizado: su plan mínimo (por defecto Premium). En tu computador (localhost) se ven todos para poder revisarlos. */
+  const RANGO_PLAN = { invitado: 0, free: 1, full: 2, premium: 3 };
+  const persVisibles = () => (localDev ? PERS : PERS.filter((m) => (RANGO_PLAN[window.Nube.perfil()] || 0) >= (RANGO_PLAN[m.plan || 'premium'] || 3)));
+  const persVisible = () => persVisibles().length > 0;
+  if (PERS.length) { // proporción y colores de cada mazo personalizado
+    const st = document.createElement('style');
+    st.textContent = PERS.map((m) => { const c = m.colores || {}; return `.tema-${m.id}{--fondo:${c.fondo || '#050816'};--halo:${c.halo || '#16225c'};--panel:${c.panel || '16, 26, 68'};--oro:${c.oro || '#e2c17c'};--oro-claro:${c.oroClaro || '#f3deab'}}.c-${m.id}{--ar:${m.ar || 0.578}}`; }).join('');
+    document.head.appendChild(st);
+  }
 
   const TEMAS = [
     { id: 'general', nombre: 'Reflexión general', intro: 'Esta lectura es una pausa para mirar el momento que estás viviendo.',
@@ -110,7 +125,7 @@
   /* ---------- utilidades ---------- */
   function barajar() {
     // Fisher–Yates con azar criptográfico. El orden queda fijo antes de que la persona elija.
-    const a = CARTAS.map((_, i) => i), buf = new Uint32Array(1);
+    const a = CARTAS.map((_, i) => i).filter((i) => cartaDisponible(i, estado.mazo)), buf = new Uint32Array(1);
     for (let i = a.length - 1; i > 0; i--) {
       const lim = Math.floor(0x100000000 / (i + 1)) * (i + 1);
       do { crypto.getRandomValues(buf); } while (buf[0] >= lim);
@@ -119,10 +134,10 @@
     }
     estado.orden = a;
   }
-  const src = (mazo, i) => `img/${mazo}/${String(i).padStart(2, '0')}.webp${mazo === 'rws' ? '?v=2' : ''}`;
+  const src = (mazo, i) => `${rutaMazo(mazo)}/${String(i).padStart(2, '0')}.webp${mazo === 'rws' ? '?v=2' : ''}`;
   const cara = (i, mazo, lazy = true) =>
     `<img src="${src(mazo, i)}" alt="${esc(CARTAS[i].nombre)}" ${lazy ? 'loading="lazy"' : ''} decoding="async" draggable="false">`;
-  const reverso = (mazo) => (mazo === 'sola' ? reversoDibujado() : `<img src="img/${mazo}/back.webp" alt="" decoding="async" draggable="false">`);
+  const reverso = (mazo) => (mazo === 'sola' ? reversoDibujado() : `<img src="${rutaMazo(mazo)}/back.webp" alt="" decoding="async" draggable="false">`);
   const carta = (html, mazo, cls = '') => `<span class="carta c-${mazo} ${cls}">${html}</span>`;
   const de = (t) => (t.startsWith('el ') ? 'del ' + t.slice(3) : 'de ' + t);
   const lista = (arr) => (arr.length < 2 ? arr.join('') : arr.slice(0, -1).join(', ') + ' y ' + arr[arr.length - 1]);
@@ -216,7 +231,7 @@
     if (id === 'mazo' || id === 'tirada') pintarCupo();
     if (id === 'tirada') pintarTiradas();
     pintarRuta(id);
-    window.Nube.vista(id);
+    if (id !== 'personalizados') window.Nube.vista(id); // la vista de personalizados no se mide: la regla de la visita admite 12 claves
     if (id === 'barajar') window.Nube.eleccion({ mazo: estado.mazo, tema: estado.tema, tirada: estado.tirada && estado.tirada.id });
     $$('.vista').forEach((v) => { v.hidden = v.id !== 'v-' + id; });
     document.body.className = (id === 'detalle' ? 'tema-' + detMazo : CON_TEMA.includes(id) ? 'tema-' + estado.mazo : '') + (id === 'elegir' ? ' con-fija' : '') + (id === 'inicio' ? '' : ' interior');
@@ -448,12 +463,33 @@
         <span class="elegir">${mazoIncluido(m.id) ? 'Leer con este mazo →' : invitacion((P) => (P.mazos || {})[m.id] !== false) + ' →'}</span></span>
     </button>`).join(''); };
   pintarListaMazos();
-  $('#listaMazos').addEventListener('click', (e) => {
+  const alElegirMazo = (e) => {
     const b = e.target.closest('[data-mazo]'); if (!b) return;
     if (b.dataset.bloq) { sfx.negado(); irDesbloqueo((P) => (P.mazos || {})[b.dataset.mazo] !== false, 'Este mazo'); return; }
     if (cupoAgotado()) { sfx.negado(); aviso(textoCupo()); return; }
-    estado.mazo = b.dataset.mazo; sfx.mazo(); ir('intencion');
-  });
+    estado.mazo = b.dataset.mazo; sfx.mazo();
+    const vol = $('#v-intencion .volver'); if (vol) vol.dataset.ir = persDe(estado.mazo) ? 'personalizados' : 'mazo'; // «Volver» regresa a la lista de donde vino
+    ir('intencion');
+  };
+  $('#listaMazos').addEventListener('click', alElegirMazo);
+  $('#listaPers').addEventListener('click', alElegirMazo);
+
+  /* ---------- tarot personalizados ---------- */
+  function pintarPers() {
+    const ver = persVisible();
+    const acc = $('#persAcceso'); if (acc) acc.hidden = !ver;
+    $('#listaPers').innerHTML = !ver ? '' : persVisibles().map((m) => {
+      const n = 78 - (m.faltan || []).length, inc = mazoIncluido(m.id);
+      return `<button type="button" class="mazo tema-${m.id}${inc ? '' : ' bloq'}" data-mazo="${m.id}"${inc ? '' : ' data-bloq="1"'}>
+        ${inc ? '' : `<span class="sello-p">${bloqueo((P) => (P.mazos || {})[m.id] !== false)}</span>`}
+        <span class="abanico cinco" aria-hidden="true">${m.muestra.map((i) => carta(cara(i, m.id, false), m.id)).join('')}</span>
+        <span class="ficha"><span class="precio">${m.anio} · ${m.lugar}</span><h3>${m.nombre}</h3>
+          <p>${m.desc}</p><span class="etiqueta">${n} cartas · ${m.tecnica}</span>
+          <span class="elegir">${inc ? 'Leer con este mazo →' : invitacion((P) => (P.mazos || {})[m.id] !== false) + ' →'}</span></span>
+      </button>`;
+    }).join('');
+  }
+  pintarPers();
 
   /* ---------- temas ---------- */
   function pintarTemas() {
@@ -1015,7 +1051,7 @@
     });
   });
 
-  $('#creditos').innerHTML = MAZOS.map((m) => `<li>${m.credito}</li>`).join('');
+  $('#creditos').innerHTML = MAZOS.concat(persVisibles()).map((m) => `<li>${m.credito}</li>`).join('');
   /* ---------- aparición al hacer scroll ---------- */
   document.documentElement.classList.add('js');
   const ojo = 'IntersectionObserver' in window
@@ -1271,7 +1307,7 @@
     r.toggle('f-sin-hoy', f.cartaDelDia === false);
     r.toggle('f-sin-desfile', f.desfile === false);
     r.toggle('f-sin-planes', f.planes === false);
-    ajustarSonidoPerfil(); pintarVitrina(); pintarDesfile(); pintarListaMazos(); pintarTiradas(); pintarTemas(); pintarCupo(); pintarPlanes();
+    ajustarSonidoPerfil(); pintarVitrina(); pintarDesfile(); pintarListaMazos(); pintarPers(); pintarTiradas(); pintarTemas(); pintarCupo(); pintarPlanes();
     const av = $('#avisoSitio');
     if (av) { const on = !!(f.aviso && f.aviso.activo && f.aviso.texto); av.hidden = !on; av.textContent = on ? f.aviso.texto : ''; }
     if (cuentaCaja) cuentaCaja.hidden = !(window.Nube.activa && f.cuentas !== false);

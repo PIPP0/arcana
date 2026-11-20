@@ -17,7 +17,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,500;1,6..96,400&family=Jost:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=42">
+<link rel="stylesheet" href="styles.css?v=43">
 </head>
 <body>
 <a class="salto" href="#contenido">Saltar al contenido</a>
@@ -153,6 +153,18 @@
     <p class="bajada" id="mazoBajada">Tres obras históricas, cada una con sus 78 cartas originales. Cambia la imagen, no el significado.</p>
     <p class="cupo" id="cupoNota" role="status" hidden></p>
     <div class="mazos" id="listaMazos"></div>
+    <div class="pers-acceso" id="persAcceso" hidden>
+      <p>¿Buscas otra mirada?</p>
+      <button type="button" class="btn" data-ir="personalizados">Descubre tarot personalizados</button>
+    </div>
+  </section>
+
+  <!-- TAROT PERSONALIZADOS -->
+  <section class="vista" id="v-personalizados" hidden>
+    <div class="cabecera"><button type="button" class="volver" data-ir="mazo">← Volver</button></div>
+    <h2 tabindex="-1">Tarot personalizados</h2>
+    <p class="bajada">Mazos con ilustración propia. Son tarot clásicos: cambia el diseño, no el significado de las cartas.</p>
+    <div class="mazos" id="listaPers"></div>
   </section>
 
   <!-- INTENCIÓN -->
@@ -294,9 +306,11 @@
 
 <script src="nube-config.js?v=18"></script>
 <script src="nube.js?v=29"></script>
+<script src="mazos-pers.js?v=1"></script>
+<script>if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) document.write('<script src="mazos-pers.local.js"><\/script>');</script>
 <script src="cards.js?v=15"></script>
 <script src="menores.js?v=15"></script>
 <script src="sonido.js?v=1"></script>
-<script src="app.js?v=61"></script>
+<script src="app.js?v=62"></script>
 </body>
 </html>
