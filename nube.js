@@ -7,7 +7,7 @@
   const cfg = window.ARCANA_NUBE || null;
   const VERSION = '10.12.2';
   const BASE = `https://www.gstatic.com/firebasejs/${VERSION}/`;
-  const DEF = { cobros: true, cobrosAbiertos: false, mazosPersonalizados: true, cartaDelDia: true, desfile: true, planes: true, cuentas: true, medicion: true,
+  const DEF = { cobros: true, cobrosAbiertos: false, cartaDelDia: true, desfile: true, planes: true, cuentas: true, medicion: true,
     mazos: { rws: true, dodal: true, sola: true }, aviso: { activo: false, texto: '' } };
   const CACHE = 'arcana.func.v1', CACHE_P = 'arcana.perf.v1';
   /* Perfiles: lo que cada uno incluye. null en un tope = sin límite. El admin lo cambia en config/perfiles. */

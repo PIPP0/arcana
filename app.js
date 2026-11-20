@@ -36,13 +36,11 @@
   const rutaMazo = (id) => (persDe(id) ? persDe(id).ruta : 'img/' + id);
   const cartaDisponible = (i, id) => !(persDe(id) && (persDe(id).faltan || []).includes(i));
   const localDev = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
-  /* Quién ve cada mazo personalizado: su plan mínimo (por defecto Premium). En tu computador (localhost) se ven todos para poder revisarlos. */
   const RANGO_PLAN = { invitado: 0, free: 1, full: 2, premium: 3 };
-  const persVisibles = () => {
-    if (window.Nube.funciones().mazosPersonalizados === false) return []; // interruptor general del admin
-    const activos = PERS.filter((m) => mazoVisible(m.id));                  // interruptor de cada mazo
-    return localDev ? activos : activos.filter((m) => (RANGO_PLAN[window.Nube.perfil()] || 0) >= (RANGO_PLAN[m.plan || 'premium'] || 3));
-  };
+  /* Un mazo personalizado lo ve quien tenga su perfil marcado en Admin → Perfiles; si el perfil no lo tiene marcado, vale el plan mínimo del mazo (por defecto Premium).
+     Cada mazo tiene además su interruptor en Admin → Funciones. En tu computador (localhost), sin marca en el perfil, se ven para poder revisarlos. */
+  const persPermitido = (m) => { const v = (permisos().mazos || {})[m.id]; return typeof v === 'boolean' ? v : localDev || (RANGO_PLAN[window.Nube.perfil()] || 0) >= (RANGO_PLAN[m.plan || 'premium'] || 3); };
+  const persVisibles = () => PERS.filter((m) => mazoVisible(m.id) && persPermitido(m));
   const persVisible = () => persVisibles().length > 0;
   if (PERS.length) { // proporción y colores de cada mazo personalizado
     const st = document.createElement('style');
