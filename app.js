@@ -479,6 +479,7 @@
   function pintarPers() {
     const ver = persVisible();
     const acc = $('#persAcceso'); if (acc) acc.hidden = !ver;
+    const accI = $('#persAccesoInicio'); if (accI) accI.hidden = !ver;
     $('#listaPers').innerHTML = !ver ? '' : persVisibles().map((m) => {
       const n = 78 - (m.faltan || []).length, inc = mazoIncluido(m.id);
       return `<button type="button" class="mazo tema-${m.id}${inc ? '' : ' bloq'}" data-mazo="${m.id}"${inc ? '' : ' data-bloq="1"'}>

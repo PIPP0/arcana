@@ -869,3 +869,4 @@ html, body { overflow-x: clip; }
 /* ---------- Tarot personalizados ---------- */
 .pers-acceso { text-align: center; margin: 34px auto 6px; max-width: 34em; }
 .pers-acceso p { margin: 0 0 12px; color: var(--lavanda); font-size: .98rem; }
+#persAccesoInicio { margin-top: 26px; }
