@@ -486,7 +486,7 @@
         ${inc ? '' : `<span class="sello-p">${bloqueo((P) => (P.mazos || {})[m.id] !== false)}</span>`}
         <span class="abanico cinco" aria-hidden="true">${m.muestra.map((i) => carta(cara(i, m.id, false), m.id)).join('')}</span>
         <span class="ficha"><span class="precio">${m.anio} · ${m.lugar}</span><h3>${m.nombre}</h3>
-          <p>${m.desc}</p><span class="etiqueta">${n} cartas · ${m.tecnica}</span>
+          <p>${m.desc}</p>${m.aviso ? `<span class="aviso-mazo">${m.aviso}</span>` : ''}<span class="etiqueta">${n} cartas · ${m.tecnica}</span>
           <span class="elegir">${inc ? 'Leer con este mazo →' : invitacion((P) => (P.mazos || {})[m.id] !== false) + ' →'}</span></span>
       </button>`;
     }).join('');

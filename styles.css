@@ -870,3 +870,5 @@ html, body { overflow-x: clip; }
 .pers-acceso { text-align: center; margin: 34px auto 6px; max-width: 34em; }
 .pers-acceso p { margin: 0 0 12px; color: var(--lavanda); font-size: .98rem; }
 #persAccesoInicio { margin-top: 26px; }
+.aviso-mazo { display: block; margin: 10px 0 2px; font-size: .78rem; line-height: 1.45; color: var(--lavanda); opacity: .85; }
+.aviso-mazo a { color: var(--oro); text-underline-offset: 3px; }
