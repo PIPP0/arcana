@@ -38,7 +38,11 @@
   const localDev = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
   /* Quién ve cada mazo personalizado: su plan mínimo (por defecto Premium). En tu computador (localhost) se ven todos para poder revisarlos. */
   const RANGO_PLAN = { invitado: 0, free: 1, full: 2, premium: 3 };
-  const persVisibles = () => (localDev ? PERS : PERS.filter((m) => (RANGO_PLAN[window.Nube.perfil()] || 0) >= (RANGO_PLAN[m.plan || 'premium'] || 3)));
+  const persVisibles = () => {
+    if (window.Nube.funciones().mazosPersonalizados === false) return []; // interruptor general del admin
+    const activos = PERS.filter((m) => mazoVisible(m.id));                  // interruptor de cada mazo
+    return localDev ? activos : activos.filter((m) => (RANGO_PLAN[window.Nube.perfil()] || 0) >= (RANGO_PLAN[m.plan || 'premium'] || 3));
+  };
   const persVisible = () => persVisibles().length > 0;
   if (PERS.length) { // proporción y colores de cada mazo personalizado
     const st = document.createElement('style');

@@ -7,7 +7,7 @@
   const cfg = window.ARCANA_NUBE || null;
   const VERSION = '10.12.2';
   const BASE = `https://www.gstatic.com/firebasejs/${VERSION}/`;
-  const DEF = { cobros: true, cobrosAbiertos: false, cartaDelDia: true, desfile: true, planes: true, cuentas: true, medicion: true,
+  const DEF = { cobros: true, cobrosAbiertos: false, mazosPersonalizados: true, cartaDelDia: true, desfile: true, planes: true, cuentas: true, medicion: true,
     mazos: { rws: true, dodal: true, sola: true }, aviso: { activo: false, texto: '' } };
   const CACHE = 'arcana.func.v1', CACHE_P = 'arcana.perf.v1';
   /* Perfiles: lo que cada uno incluye. null en un tope = sin límite. El admin lo cambia en config/perfiles. */
@@ -174,7 +174,7 @@
     alCambiarFunciones(f) { oyentesF.push(f); f(F); },
     alCambiarUsuario(f) { oyentesU.push(f); },
     vista(id) { if (!midiendo()) return; ses.vistas[id] = (ses.vistas[id] || 0) + 1; marcar(); },
-    eleccion(o) { if (!midiendo()) return; Object.assign(ses, { mazo: o.mazo || ses.mazo, tema: o.tema || ses.tema, tirada: o.tirada || ses.tirada }); marcar(); },
+    eleccion(o) { if (!midiendo()) return; Object.assign(ses, { mazo: ['rws', 'dodal', 'sola'].includes(o.mazo) ? o.mazo : ses.mazo, /* las reglas solo aceptan los tres mazos clásicos */ tema: o.tema || ses.tema, tirada: o.tirada || ses.tirada }); marcar(); },
     cartaHoy() { if (!midiendo()) return; ses.cartaHoy = true; marcar(); },
     async lectura(o) {
       if (!cfg) return;

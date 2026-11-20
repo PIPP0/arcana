@@ -14,7 +14,8 @@
   const TEMAS = { general: 'Reflexión general', amor: 'Amor y relaciones', trabajo: 'Trabajo y proyectos', crecimiento: 'Crecimiento personal', decisiones: 'Decisiones', libre: 'Pregunta libre' };
   const TIRADAS = { una: 'Una carta', tiempo: 'Tres cartas', perspectivas: 'Tres perspectivas' };
   const PASOS = [['inicio', 'Portada'], ['mazo', 'Elige mazo'], ['intencion', 'Elige tema'], ['tirada', 'Elige tirada'], ['barajar', 'Baraja'], ['elegir', 'Elige cartas'], ['lectura', 'Revela'], ['quiero-full', 'Le interesa Full'], ['quiero-premium', 'Le interesa Premium']];
-  const DEF = { cobros: true, cobrosAbiertos: false, cartaDelDia: true, desfile: true, planes: true, cuentas: true, medicion: true, mazos: { rws: true, dodal: true, sola: true }, aviso: { activo: false, texto: '' } };
+  const PERS = (window.ARCANA_MAZOS_PERS || []).filter((m) => m && m.id);
+  const DEF = { cobros: true, cobrosAbiertos: false, mazosPersonalizados: true, cartaDelDia: true, desfile: true, planes: true, cuentas: true, medicion: true, mazos: { rws: true, dodal: true, sola: true }, aviso: { activo: false, texto: '' } };
   const T3 = { una: true, tiempo: true, perspectivas: true };
   const PERF_DEF = {
     invitado: { precio: '', periodo: '', sonido: true, estilos: { 1: true, 2: false, 3: false, 4: false, 5: false }, calendario: false, tiradas: { una: true, tiempo: false, perspectivas: false }, mazos: { rws: true, dodal: false, sola: false }, temaLibre: false, diario: false, lecturasDia: 3, guardadas: 0, recuperarDias: 0 },
@@ -335,6 +336,8 @@
       ${fila('f_cuentas', 'Entrar con Google', 'Caja de cuenta en Mi espacio.', f.cuentas, `${n0(E.datos.personas.length)} cuentas`)}
       ${fila('f_medicion', 'Medición anónima', 'Si la apagas, este panel deja de recibir datos nuevos.', f.medicion, `${n0(sesN)} visitas medidas`)}
       ${Object.keys(MAZOS).map((k) => fila('f_m_' + k, 'Mazo ' + MAZOS[k], 'Si lo apagas, desaparece de la lista y de la portada.', f.mazos[k], `${n0(c.porMazo[k] || 0)} lecturas · ${pct(c.porMazo[k] || 0, tot)}`)).join('')}
+      ${fila('f_mazosPers', 'Tarot personalizados', 'Botón «Descubre tarot personalizados» y su vista (solo la ven las cuentas Premium). Si lo apagas, desaparecen para todos; no se borra nada.', f.mazosPersonalizados !== false, `${PERS.length} ${PERS.length === 1 ? 'mazo' : 'mazos'}`)}
+      ${PERS.map((m) => fila('f_mp_' + m.id, 'Mazo personalizado: ' + esc(m.nombre), 'Si lo apagas, este mazo desaparece de la vista. Plan mínimo: ' + esc(m.plan || 'premium') + '.', f.mazos[m.id] !== false, 'Sin medición propia')).join('')}
       ${fila('f_aviso', 'Aviso del sitio', 'Franja dorada arriba de toda la página, con el texto que escribas abajo.', f.aviso.activo, f.aviso.activo ? 'Visible' : 'Oculto')}
       </tbody></table></div>
       <div class="campo"><label for="avisoTexto">Texto del aviso (hasta 140 caracteres)</label><input id="avisoTexto" maxlength="140" value="${esc(f.aviso.texto)}" placeholder="Por ejemplo: Hoy estamos probando mejoras. Gracias por tu paciencia."></div>
@@ -457,8 +460,9 @@
     const cp = $('#csvPersonas'); if (cp) cp.onclick = () => descargar('arcana-personas.csv', [['persona', 'tipo', 'correo', 'perfil', 'entro', 'ultimo', 'visitas', 'lecturas', 'equipo']].concat(filtrarFilas(filasPersonas(calc())).map((f) => [f.nombre, f.tipo, f.correo === '—' ? '' : f.correo, f.tipo === 'cuenta' ? (f.p.perfil || 'free') : '', f.entro ? new Date(f.entro).toISOString() : '', f.ultimo ? new Date(f.ultimo).toISOString() : '', f.visitas, f.lect, nombreEquipo(f.disp)])));
     const cl = $('#csvLecturas'); if (cl) cl.onclick = () => descargar('arcana-lecturas.csv', [['fecha', 'mazo', 'tema', 'tirada', 'cartas', 'con_pregunta', 'equipo']].concat(E.datos.lecturas.map((l) => [l.fecha ? l.fecha.toISOString() : '', l.mazo, l.tema, l.tirada, (l.cartas || []).map(nombreCarta).join(' | '), l.pregunta ? 'si' : 'no', l.disp])));
     // funciones
-    const map = { f_cobros: (v) => { E.edit.cobros = v; }, f_cobrosAbiertos: (v) => { E.edit.cobrosAbiertos = v; }, f_cartaDelDia: (v) => { E.edit.cartaDelDia = v; }, f_desfile: (v) => { E.edit.desfile = v; }, f_planes: (v) => { E.edit.planes = v; }, f_cuentas: (v) => { E.edit.cuentas = v; }, f_medicion: (v) => { E.edit.medicion = v; }, f_aviso: (v) => { E.edit.aviso.activo = v; } };
+    const map = { f_cobros: (v) => { E.edit.cobros = v; }, f_cobrosAbiertos: (v) => { E.edit.cobrosAbiertos = v; }, f_mazosPers: (v) => { E.edit.mazosPersonalizados = v; }, f_cartaDelDia: (v) => { E.edit.cartaDelDia = v; }, f_desfile: (v) => { E.edit.desfile = v; }, f_planes: (v) => { E.edit.planes = v; }, f_cuentas: (v) => { E.edit.cuentas = v; }, f_medicion: (v) => { E.edit.medicion = v; }, f_aviso: (v) => { E.edit.aviso.activo = v; } };
     Object.keys(MAZOS).forEach((k) => { map['f_m_' + k] = (v) => { E.edit.mazos[k] = v; }; });
+    PERS.forEach((m) => { map['f_mp_' + m.id] = (v) => { E.edit.mazos[m.id] = v; }; });
     Object.keys(map).forEach((id) => { const i = $('#' + id); if (i) i.onchange = () => {
       if (id.startsWith('f_m_') && !i.checked && Object.keys(MAZOS).filter((k) => E.edit.mazos[k]).length <= 1) { i.checked = true; aviso('Debe quedar al menos un mazo encendido.'); return; }
       map[id](i.checked); pintar(); }; });
