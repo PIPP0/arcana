@@ -872,3 +872,4 @@ html, body { overflow-x: clip; }
 #persAccesoInicio { margin-top: 26px; }
 .aviso-mazo { display: block; margin: 10px 0 2px; font-size: .78rem; line-height: 1.45; color: var(--lavanda); opacity: .85; }
 .aviso-mazo a { color: var(--oro); text-underline-offset: 3px; }
+.mazos-hoy { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }

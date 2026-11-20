@@ -360,6 +360,16 @@
   const pintarDesfile = () => { const D = DESFILE.filter(([m]) => mazoVisible(m)); $('#desfile').innerHTML = D.concat(D).map(([m, i]) => `<img src="${src(m, i)}" alt="" loading="lazy" decoding="async">`).join(''); };
   pintarDesfile();
 
+  /* Mazo de la carta del día: lo elige cada persona en su perfil entre los mazos que tiene disponibles (se recuerda en este dispositivo). */
+  const mazosParaHoy = () => MAZOS.filter((m) => mazoActivo(m.id)).concat(persVisibles());
+  const mazoHoyPref = () => { const u = window.Nube.usuario(); try { return (u && localStorage.getItem('arcana.hoy.mazo.' + u.uid)) || 'rws'; } catch (e) { return 'rws'; } };
+  const mazoHoyDe = (carta) => { const id = mazoHoyPref(); return mazosParaHoy().some((m) => m.id === id) && cartaDisponible(carta, id) ? id : 'rws'; };
+  function ponerMazoHoy(id) {
+    const u = window.Nube.usuario(); if (!u) return;
+    try { if (id && id !== 'rws') localStorage.setItem('arcana.hoy.mazo.' + u.uid, id); else localStorage.removeItem('arcana.hoy.mazo.' + u.uid); } catch (e) { /* sigue igual */ }
+    document.dispatchEvent(new CustomEvent('arcana:mazohoy'));
+  }
+
   /* carta del día: la misma durante todo el día.
      Sin sesión se reconoce por el navegador; con sesión queda guardada en la cuenta, así que es la misma en cualquier dispositivo.
      Un interruptor permite ocultarla y volver a verla cuando quieras. */
@@ -379,7 +389,8 @@
     const visible = () => btn.classList.contains('vista-carta');
     function caras() {
       k = CARTAS[g.carta];
-      btn.innerHTML = `<span class="dentro"><span class="lado carta c-rws">${reverso('rws')}</span><span class="lado frente carta c-rws">${cara(g.carta, 'rws', false)}</span></span>`;
+      const mz = mazoHoyDe(g.carta);
+      btn.innerHTML = `<span class="dentro"><span class="lado carta c-${mz}">${reverso(mz)}</span><span class="lado frente carta c-${mz}">${cara(g.carta, mz, false)}</span></span>`;
     }
     caras();
     const interruptor = (on) => `<label class="sw"><input type="checkbox" id="hoySw" role="switch" ${on ? 'checked' : ''}><span class="sw-pista" aria-hidden="true"></span><span class="sw-txt">Ocultar carta</span></label>`;
@@ -420,8 +431,9 @@
       if (estaba) mostrar(); else pintarEspera();
     }
 
+    document.addEventListener('arcana:mazohoy', () => { const estaba = visible(); caras(); if (estaba) { btn.classList.add('vista-carta'); mostrar(); } else pintarEspera(); });
     if (g.vista && window.Nube.usuario()) mostrar(); else pintarEspera();
-    btn.addEventListener('click', () => { if (visible()) ampliar(g.carta, 'rws'); else revelar(); });
+    btn.addEventListener('click', () => { if (visible()) ampliar(g.carta, mazoHoyDe(g.carta)); else revelar(); });
     txt.addEventListener('change', (e) => { if (e.target.id !== 'hoySw' || e.target.checked) return; sfx.tick(); ocultar(); }); // el interruptor solo oculta; para volver a verla se toca la carta
 
     let reclamada = false;
@@ -1012,7 +1024,7 @@
 
   /* ---------- llevar mis datos (exportar / importar) ---------- */
   const CLAVES_DATOS = [CLAVE, 'arcana.hoy.hist.v1', 'arcana.hoy.v1', 'arcana.sonido.estilo'];
-  const esClaveDato = (k) => CLAVES_DATOS.includes(k) || k.startsWith('arcana.avatar.');
+  const esClaveDato = (k) => CLAVES_DATOS.includes(k) || k.startsWith('arcana.avatar.') || k.startsWith('arcana.hoy.mazo.');
   function exportarDatos() {
     const datos = {};
     try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (esClaveDato(k)) datos[k] = localStorage.getItem(k); } } catch (e) { /* sin almacenamiento */ }
@@ -1180,6 +1192,8 @@
       <section class="tarjeta-p"><h3>Tu avatar <span>(opcional)</span></h3><p>Elige un arcano que te represente. Solo se ve en tu cuenta.</p>
         <div class="avatares" role="radiogroup" aria-label="Elige tu avatar">${AVATARES.map(([id, n, d]) => `<button type="button" class="av-op${av === id ? ' sel' : ''}" role="radio" aria-checked="${av === id}" data-avatar="${id}"><span class="av-img">${avatarSvg(id)}</span><b>${n}</b><small>${d}</small></button>`).join('')}</div>
         <div class="acciones"><button type="button" class="btn chico" data-avatar="" ${av ? '' : 'disabled'}>Sin avatar</button></div></section>
+${mazosParaHoy().length > 1 ? `<section class="tarjeta-p"><h3>Mazo de tu carta del día</h3><p>Elige con qué mazo quieres ver tu carta de cada día. Solo aparecen los que tienes disponibles.</p>
+        <div class="mazos-hoy" role="radiogroup" aria-label="Mazo de tu carta del día">${mazosParaHoy().map((m) => `<button type="button" class="btn chico${mazoHoyPref() === m.id ? ' primario' : ''}" role="radio" aria-checked="${mazoHoyPref() === m.id}" data-mazohoy="${m.id}">${m.nombre}</button>`).join('')}</div></section>` : ''}
       <section class="tarjeta-p"><h3>Tus datos</h3>
         <label class="campo" for="pNombre">Nombre</label>
         <div class="fila-n"><input id="pNombre" type="text" maxlength="80" value="${esc(f.nombre || u.nombre || '')}" autocomplete="name"><button type="button" class="btn chico primario" id="btnGuardarNombre">Guardar</button></div>
@@ -1244,6 +1258,8 @@
   const vPerfil = $('#v-perfil');
   if (vPerfil) {
     vPerfil.addEventListener('click', async (e) => {
+      const mh = e.target.closest('[data-mazohoy]');
+      if (mh) { ponerMazoHoy(mh.dataset.mazohoy); pintarCuenta(); sfx.tick(); aviso('Listo: tu carta del día se verá con ese mazo.'); return; }
       const av = e.target.closest('[data-avatar]');
       if (av) { ponerAvatar(av.dataset.avatar); sfx.tick(); aviso(av.dataset.avatar ? 'Avatar elegido.' : 'Avatar quitado.'); return; }
       const id = e.target.id;
