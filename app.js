@@ -858,6 +858,7 @@
     const ok = await confirmarModal({ titulo: `Recuperar ${falt.length} ${falt.length === 1 ? 'carta' : 'cartas'}`, texto: 'Se dan vuelta las cartas que te tocaban en los días de esta semana que no abriste. Solo días que ya pasaron.', boton: 'Dar vuelta todas', tono: 'normal' });
     if (ok) recuperar(falt);
   }
+  document.addEventListener('arcana:mazohoy', () => pintarCalendario());
   function pintarCalendario() {
     const grid = $('#calGrid'); if (!grid) return;
     const calOk = permisos().calendario !== false, calSec = $('#calendario');
@@ -883,7 +884,7 @@
     let h = '<span class="cal-v"></span>'.repeat(primero);
     for (let d = 1; d <= dias; d++) {
       const f = `${cal.y}-${String(cal.m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`, id = hist[f], esHoy = f === hoy;
-      if (id !== undefined && CARTAS[id]) h += `<button type="button" class="cal-d con${esHoy ? ' es-hoy' : ''}${cal.sel === f ? ' sel' : ''}" data-dia="${f}" aria-pressed="${cal.sel === f}" aria-label="${d} de ${MESES[cal.m]}: ${esc(CARTAS[id].nombre)}"><img src="${src('rws', id)}" alt="" loading="lazy" decoding="async"><span>${d}</span></button>`;
+      if (id !== undefined && CARTAS[id]) h += `<button type="button" class="cal-d con${esHoy ? ' es-hoy' : ''}${cal.sel === f ? ' sel' : ''}" data-dia="${f}" aria-pressed="${cal.sel === f}" aria-label="${d} de ${MESES[cal.m]}: ${esc(CARTAS[id].nombre)}"><img src="${src(mazoHoyDe(id), id)}" alt="" loading="lazy" decoding="async"><span>${d}</span></button>`;
       else if (f >= lunesDe(hoy) && f < hoy) {
         const lim = limiteRecup(), est = lim === 0 ? 'bloq' : (restantesRecup() === 0 ? 'agotado' : 'ok');
         h += `<button type="button" class="cal-d rec ${est}" data-rec="${f}" title="${est === 'ok' ? 'Recuperar esta carta' : est === 'bloq' ? 'Con suscripción' : 'Ya recuperaste tu día de esta semana'}" aria-label="${d} de ${MESES[cal.m]}: carta sin abrir. ${est === 'ok' ? 'Recuperarla' : est === 'bloq' ? 'Con suscripción' : 'Sin días de recuperación esta semana'}"><span>${d}</span><i aria-hidden="true">↺</i></button>`;
@@ -910,7 +911,7 @@
     const det = $('#calDet'), id = cal.sel ? hist[cal.sel] : undefined;
     if (id !== undefined && CARTAS[id]) {
       const k = CARTAS[id], [yy, mm, dd] = cal.sel.split('-').map(Number);
-      det.innerHTML = `<div class="cal-carta"><button type="button" class="cal-mini" data-ver-cal="${id}" aria-label="Ver ${esc(k.nombre)} en grande">${carta(cara(id, 'rws', false), 'rws')}</button>
+      det.innerHTML = `<div class="cal-carta"><button type="button" class="cal-mini" data-ver-cal="${id}" aria-label="Ver ${esc(k.nombre)} en grande">${carta(cara(id, mazoHoyDe(id), false), mazoHoyDe(id))}</button>
         <div><p class="pos">${fmtDiaLargo.format(new Date(Date.UTC(yy, mm - 1, dd)))}</p>${leerRecup().dias[cal.sel] !== undefined ? '<span class="sello-p">Recuperada</span>' : ''}<h4>${esc(k.nombre)}</h4><p class="claves">${esc(k.claves)}</p><p>${esc(k.luz)}</p><p class="cal-q"><b>Una pregunta para ti</b>${esc(k.pregunta)}</p></div></div>`;
     } else {
       det.innerHTML = dados.length ? '<p class="cal-vacio">Toca un día con carta para recordar qué te acompañó.</p>'
@@ -925,7 +926,7 @@
     if (e.target.closest('#calSig')) { cal.m++; if (cal.m > 11) { cal.m = 0; cal.y++; } pintarCalendario(); return; }
     const rc = e.target.closest('[data-rec]'); if (rc) { accionRecuperar(rc.dataset.rec); return; }
     if (e.target.closest('#calRecTodos')) { accionRecuperarTodos(); return; }
-    const v = e.target.closest('[data-ver-cal]'); if (v) { ampliar(Number(v.dataset.verCal), 'rws'); return; }
+    const v = e.target.closest('[data-ver-cal]'); if (v) { ampliar(Number(v.dataset.verCal), mazoHoyDe(Number(v.dataset.verCal))); return; }
     if (e.target.closest('#calIr')) { ir('inicio'); setTimeout(() => { const h = $('#hoy'); if (h) h.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 80); }
   });
 
