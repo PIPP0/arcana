@@ -134,7 +134,8 @@
     }
     estado.orden = a;
   }
-  const src = (mazo, i) => `${rutaMazo(mazo)}/${String(i).padStart(2, '0')}.webp${mazo === 'rws' ? '?v=2' : ''}`;
+  /* Si a un mazo personalizado le falta la imagen de una carta (por ejemplo en miniaturas de temas), se usa la del mazo clásico para no mostrar un hueco. */
+  const src = (mazo, i) => { const f = !cartaDisponible(i, mazo); const m = f ? 'rws' : mazo; return `${rutaMazo(m)}/${String(i).padStart(2, '0')}.webp${m === 'rws' ? '?v=2' : ''}`; };
   const cara = (i, mazo, lazy = true) =>
     `<img src="${src(mazo, i)}" alt="${esc(CARTAS[i].nombre)}" ${lazy ? 'loading="lazy"' : ''} decoding="async" draggable="false">`;
   const reverso = (mazo) => (mazo === 'sola' ? reversoDibujado() : `<img src="${rutaMazo(mazo)}/back.webp" alt="" decoding="async" draggable="false">`);
