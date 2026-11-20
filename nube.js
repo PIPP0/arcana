@@ -35,6 +35,14 @@
   let PF = mezclar(PERF_DEF, guardadoP);
   let miPerfil = 'invitado';
   let usuario = null, ficha = null;
+  /* Se recuerda quién era la última cuenta y su plan, para pintar la página ya con su plan al abrirla (Firebase tarda ~1 s en confirmar la sesión).
+     Es solo para la pantalla: lo que se puede hacer de verdad lo siguen decidiendo las reglas del servidor. */
+  const CUENTA_K = 'arcana.cuenta.v1';
+  let cuentaCache = null;
+  try { cuentaCache = JSON.parse(localStorage.getItem(CUENTA_K) || 'null'); } catch (e) { /* sin almacenamiento */ }
+  if (cuentaCache && cuentaCache.uid && cuentaCache.usuario && cuentaCache.usuario.uid === cuentaCache.uid && PERFILES.includes(cuentaCache.perfil)) { miPerfil = cuentaCache.perfil; usuario = cuentaCache.usuario; } else cuentaCache = null;
+  const guardarCuenta = () => { try { if (usuario && miPerfil !== 'invitado') localStorage.setItem(CUENTA_K, JSON.stringify({ uid: usuario.uid, perfil: miPerfil, usuario })); } catch (e) { /* idem */ } };
+  const olvidarCuenta = () => { cuentaCache = null; try { localStorage.removeItem(CUENTA_K); } catch (e) { /* idem */ } };
   const oyentesF = [], oyentesU = [];
   const aleatorio = (n) => { const a = new Uint8Array(n); crypto.getRandomValues(a); return Array.from(a, (x) => 'abcdefghijklmnopqrstuvwxyz0123456789'[x % 36]).join(''); };
   const hoyChile = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Santiago' }).format(new Date());
@@ -138,6 +146,8 @@
     c.au.onAuthStateChanged(c.auth, (u) => {
       usuario = u && !u.isAnonymous && u.email ? { uid: u.uid, nombre: u.displayName || '', email: u.email, proveedor: (u.providerData && u.providerData[0] && u.providerData[0].providerId === 'password') ? 'correo' : 'google' } : null;
       if (!usuario) ficha = null;
+      if (usuario && cuentaCache && cuentaCache.uid !== usuario.uid) { miPerfil = 'invitado'; olvidarCuenta(); } // entró otra cuenta: no se usa el plan recordado
+      if (!usuario) olvidarCuenta();
       avisarU();
       if (usuario) { if (miPerfil === 'invitado') { miPerfil = 'free'; avisarF(); } tocarPersona(u, c, false); leerPerfil(u, c); } else if (miPerfil !== 'invitado') { miPerfil = 'invitado'; avisarF(); }
     });
@@ -148,7 +158,8 @@
       const p = s.exists() && PERFILES.includes(s.data().perfil) ? s.data().perfil : 'free';
       if (s.exists()) { const d = s.data(); ficha = { nombre: d.nombre || '', avatar: d.avatar || null, hoy: d.hoy && typeof d.hoy === 'object' ? d.hoy : null, porPago: d.porPago === true, accesos: d.accesos || 0, creado: d.creado && d.creado.toDate ? d.creado.toDate() : null }; avisarU(); }
       if (p !== miPerfil) { miPerfil = p; avisarF(); }
-    } catch (e) { /* sin ficha o sin red: se queda en Free */ }
+      guardarCuenta();
+    } catch (e) { /* sin ficha o sin red: se queda con el plan recordado (o Free) */ }
   }
 
   const N = window.Nube = {
