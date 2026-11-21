@@ -140,7 +140,7 @@
   const src = (mazo, i) => { const f = !cartaDisponible(i, mazo); const m = f ? 'rws' : mazo; return `${rutaMazo(m)}/${String(i).padStart(2, '0')}.webp${m === 'rws' ? '?v=2' : m === 'mn1' ? '?v=9' : ''}`; };
   const cara = (i, mazo, lazy = true) =>
     `<img src="${src(mazo, i)}" alt="${esc(CARTAS[i].nombre)}" ${lazy ? 'loading="lazy"' : ''} decoding="async" draggable="false">`;
-  const reverso = (mazo) => (mazo === 'sola' ? reversoDibujado() : `<img src="${rutaMazo(mazo)}/back.webp" alt="" decoding="async" draggable="false">`);
+  const reverso = (mazo) => (mazo === 'sola' ? reversoDibujado() : `<img src="${rutaMazo(mazo)}/back.webp${mazo === 'mn1' ? '?v=2' : ''}" alt="" decoding="async" draggable="false">`);
   const carta = (html, mazo, cls = '') => `<span class="carta c-${mazo} ${cls}">${html}</span>`;
   const de = (t) => (t.startsWith('el ') ? 'del ' + t.slice(3) : 'de ' + t);
   const lista = (arr) => (arr.length < 2 ? arr.join('') : arr.slice(0, -1).join(', ') + ' y ' + arr[arr.length - 1]);
