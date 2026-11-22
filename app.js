@@ -370,6 +370,14 @@
     document.dispatchEvent(new CustomEvent('arcana:mazohoy'));
   }
 
+  /* Cartas ya usadas en el mes de un día (calendario + la carta de hoy), para que ninguna se repita dentro del mismo mes. */
+  function usadasEnMes(dia) {
+    const mes = dia.slice(0, 7), u = new Set();
+    try { const h = JSON.parse(localStorage.getItem('arcana.hoy.hist.v1')) || {}; Object.keys(h).forEach((f) => { if (f.slice(0, 7) === mes && f !== dia && Number.isInteger(h[f])) u.add(h[f]); }); } catch (e) { /* sin datos */ }
+    try { const g = JSON.parse(localStorage.getItem('arcana.hoy.v1')); if (g && g.dia && g.dia !== dia && g.dia.slice(0, 7) === mes && Number.isInteger(g.carta)) u.add(g.carta); } catch (e) { /* sin datos */ }
+    return u;
+  }
+
   /* carta del día: la misma durante todo el día.
      Sin sesión se reconoce por el navegador; con sesión queda guardada en la cuenta, así que es la misma en cualquier dispositivo.
      Un interruptor permite ocultarla y volver a verla cuando quieras. */
@@ -379,8 +387,8 @@
     let g = null;
     try { g = JSON.parse(localStorage.getItem(KH)); } catch (e) { /* sin almacenamiento */ }
     if (!g || g.dia !== hoy || !CARTAS[g.carta]) {
-      const b = new Uint32Array(1); crypto.getRandomValues(b);
-      g = { dia: hoy, carta: b[0] % TOTAL, vista: false };
+      const usadas = usadasEnMes(hoy), libres = CARTAS.map((_, i) => i).filter((i) => !usadas.has(i)), b = new Uint32Array(1); crypto.getRandomValues(b);
+      g = { dia: hoy, carta: libres.length ? libres[b[0] % libres.length] : b[0] % TOTAL, vista: false };
     }
     const guardarG = () => { try { localStorage.setItem(KH, JSON.stringify(g)); } catch (e) { /* sigue igual */ } };
     guardarG();
@@ -834,8 +842,13 @@
     return o;
   }
   async function cartaDeDia(uid, f) {
-    const h = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode('arcana|' + uid + '|' + f)));
-    return (((h[0] << 24) | (h[1] << 16) | (h[2] << 8) | h[3]) >>> 0) % TOTAL;
+    const usadas = usadasEnMes(f); let id = 0;
+    for (let n = 0; n < 300; n++) { // si la carta ya salió ese mes, se prueba la siguiente de la misma cuenta y fecha
+      const h = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode('arcana|' + uid + '|' + f + (n ? '|' + n : ''))));
+      id = (((h[0] << 24) | (h[1] << 16) | (h[2] << 8) | h[3]) >>> 0) % TOTAL;
+      if (!usadas.has(id)) break;
+    }
+    return id;
   }
   const textoDia = (f) => { const [y, m, d] = f.split('-').map(Number); return fmtDiaLargo.format(new Date(Date.UTC(y, m - 1, d))); };
   async function recuperar(fechas) {
