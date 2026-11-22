@@ -851,6 +851,21 @@
     return id;
   }
   const textoDia = (f) => { const [y, m, d] = f.split('-').map(Number); return fmtDiaLargo.format(new Date(Date.UTC(y, m - 1, d))); };
+  /* Una sola vez por visita: si un día recuperado repite una carta que ya salió en el mes, se vuelve a calcular con la regla nueva. */
+  let revisadoRepetidas = false;
+  async function corregirRepetidas() {
+    const u = window.Nube.usuario(); if (!u) return false;
+    const r = leerRecup(), hist = leerHist(), visto = new Map(); let cambio = false;
+    for (const f of Object.keys(hist).sort()) {
+      const id = hist[f], mes = f.slice(0, 7), k = mes + '|' + id;
+      if (!visto.has(k)) { visto.set(k, f); continue; }
+      if (r.dias[f] === undefined) continue; // solo días recuperados: los que abriste tú tal día no se tocan
+      const nuevo = await cartaDeDia(u.uid, f);
+      if (nuevo !== id) { anotarDia(f, nuevo); r.dias[f] = nuevo; hist[f] = nuevo; visto.set(mes + '|' + nuevo, f); cambio = true; }
+    }
+    if (cambio) { try { localStorage.setItem(RECUP_K, JSON.stringify(r)); } catch (e) { /* sigue igual */ } }
+    return cambio;
+  }
   async function recuperar(fechas) {
     const u = window.Nube.usuario(); if (!u) { irEntrar('Entra a tu cuenta para recuperar tus días.'); return; }
     const r = leerRecup();
@@ -873,6 +888,7 @@
   }
   document.addEventListener('arcana:mazohoy', () => pintarCalendario());
   function pintarCalendario() {
+    if (!revisadoRepetidas && window.Nube.usuario()) { revisadoRepetidas = true; corregirRepetidas().then((c) => { if (c) pintarCalendario(); }).catch(() => { /* sigue igual */ }); }
     const grid = $('#calGrid'); if (!grid) return;
     const calOk = permisos().calendario !== false, calSec = $('#calendario');
     if (calSec) calSec.classList.toggle('bloqueado', !calOk);
