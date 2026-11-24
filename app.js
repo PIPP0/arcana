@@ -134,7 +134,7 @@
       const j = buf[0] % (i + 1);
       [a[i], a[j]] = [a[j], a[i]];
     }
-    estado.orden = a;
+    estado.orden = a; estado.confirmada = false;
   }
   /* Si a un mazo personalizado le falta la imagen de una carta (por ejemplo en miniaturas de temas), se usa la del mazo clásico para no mostrar un hueco. */
   const src = (mazo, i) => { const f = !cartaDisponible(i, mazo); const m = f ? 'rws' : mazo; return `${rutaMazo(m)}/${String(i).padStart(2, '0')}.webp${m === 'rws' ? '?v=2' : m === 'mn1' ? '?v=9' : ''}`; };
@@ -588,7 +588,7 @@
   /* ---------- elegir ---------- */
   function pintarMesa() {
     const n = estado.tirada.pos.length;
-    estado.elegidas = [];
+    estado.elegidas = []; estado.confirmada = false;
     $('#tituloElegir').textContent = n === 1 ? 'Elige tu carta' : `Elige tus ${n} cartas`;
     const back = reverso(estado.mazo);
     $('#mesa').innerHTML = estado.orden.map((_, k) =>
@@ -619,8 +619,24 @@
     if (sono === 'elegir') sfx.elegir(estado.elegidas.indexOf(k)); else sfx.soltar();
     actualizarElegir();
   });
+  /* Para que con el tiempo salgan las 78 cartas: a cada persona se le reparten primero las que aún no le han salido.
+     Las cartas están boca abajo y nadie ve su orden, así que el cambio es invisible; entre las pendientes sigue siendo azar. Al completar las 78, empieza otra vuelta. */
+  const VISTAS_K = 'arcana.cartas.vistas.v1';
+  function preferirNuevas() {
+    if (estado.confirmada) return; estado.confirmada = true;
+    let vistas; try { const a = JSON.parse(localStorage.getItem(VISTAS_K)); vistas = new Set(Array.isArray(a) ? a : []); } catch (e) { vistas = new Set(); }
+    if (estado.orden.every((c) => vistas.has(c))) vistas = new Set();
+    const libres = estado.orden.map((c, k) => k).filter((k) => !estado.elegidas.includes(k) && !vistas.has(estado.orden[k])), buf = new Uint32Array(1);
+    estado.elegidas.forEach((k) => {
+      if (!vistas.has(estado.orden[k]) || !libres.length) return;
+      crypto.getRandomValues(buf); const k2 = libres.splice(buf[0] % libres.length, 1)[0];
+      [estado.orden[k], estado.orden[k2]] = [estado.orden[k2], estado.orden[k]];
+    });
+    estado.elegidas.forEach((k) => vistas.add(estado.orden[k]));
+    try { localStorage.setItem(VISTAS_K, JSON.stringify([...vistas])); } catch (e) { /* sin almacenamiento: queda al azar */ }
+  }
   $('#btnConfirmar').addEventListener('click', () => {
-    sfx.confirmar(); pintarLectura(); ir('lectura');
+    preferirNuevas(); sfx.confirmar(); pintarLectura(); ir('lectura');
     /* las cartas quedan centradas en la pantalla, con sus posiciones y nombres a la vista */
     setTimeout(() => { const r = $('#ranuras'); if (r) r.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 120);
   });
