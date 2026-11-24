@@ -90,7 +90,7 @@
   }
 
   /* ================= estado ================= */
-  const E = { usuario: null, seccion: 'resumen', rango: 14, datos: null, cargando: false, error: '', correos: null, funciones: null, edit: null, perfiles: null, editP: null, buscar: '', verAnon: true, fMazo: '', fTema: '', fTirada: '', fPregunta: '', mazoMapa: 'rws', gastoLecturas: 0, cuentas: null, abierto: null };
+  const E = { usuario: null, seccion: 'resumen', rango: 14, datos: null, cargando: false, error: '', correos: null, funciones: null, edit: null, perfiles: null, editP: null, buscar: '', pag: {}, verAnon: true, fMazo: '', fTema: '', fTirada: '', fPregunta: '', mazoMapa: 'rws', gastoLecturas: 0, cuentas: null, abierto: null };
 
   /* ================= pantallas ================= */
   const app = $('#app');
@@ -244,6 +244,13 @@
   const mas = (arr) => { const c = {}; arr.forEach((x) => { if (x) c[x] = (c[x] || 0) + 1; }); return Object.keys(c).sort((a, b) => c[b] - c[a])[0] || ''; };
   const nombreEquipo = (d) => (d === 'movil' ? 'Celular' : d === 'escritorio' ? 'Computador' : '—');
   const masTarde = (a, b) => (!a ? b : !b ? a : (a > b ? a : b));
+  /* Paginación: toda tabla de datos muestra 10 filas por página. */
+  const POR = 10;
+  function pagina(k, total) {
+    const paginas = Math.max(1, Math.ceil(total / POR)); let p = Math.min(Math.max(1, E.pag[k] || 1), paginas); E.pag[k] = p;
+    return { desde: (p - 1) * POR, hasta: Math.min(total, p * POR), p, paginas, total };
+  }
+  const controlPag = (k, g) => (g.total <= POR ? '' : `<nav class="pag" aria-label="Paginación"><button type="button" class="btn chico" data-pag="${esc(k)}|-1" ${g.p <= 1 ? 'disabled' : ''}>‹ Anterior</button><span>Página ${g.p} de ${g.paginas} · ${g.desde + 1}–${g.hasta} de ${n0(g.total)}</span><button type="button" class="btn chico" data-pag="${esc(k)}|1" ${g.p >= g.paginas ? 'disabled' : ''}>Siguiente ›</button></nav>`);
   function filasPersonas(c) {
     // si un navegador inició sesión alguna vez, todas sus visitas se asocian a esa cuenta
     const duenio = {}; c.ses.forEach((x) => { if (x.uid) duenio[x.anon] = x.uid; });
@@ -258,18 +265,20 @@
     return filas.sort((a, b) => (b.ultimo || 0) - (a.ultimo || 0));
   }
   function detalleFila(f) {
-    const sub = f.ses.length ? `<div class="tabla-c"><table class="sub"><thead><tr><th>Día</th><th>Entró</th><th>Duración</th><th>Equipo</th><th>Recorrido</th><th>Mazo</th><th>Tema</th><th>Tirada</th><th>Lecturas</th><th>Carta del día</th></tr></thead><tbody>${f.ses.map((x) => {
+    const gs = pagina('ses|' + f.clave, f.ses.length);
+    const sub = f.ses.length ? `<div class="tabla-c"><table class="sub"><thead><tr><th>Día</th><th>Entró</th><th>Duración</th><th>Equipo</th><th>Recorrido</th><th>Mazo</th><th>Tema</th><th>Tirada</th><th>Lecturas</th><th>Carta del día</th></tr></thead><tbody>${f.ses.slice(gs.desde, gs.hasta).map((x) => {
       const dur = x.inicio && x.ultima ? Math.max(0, Math.round((x.ultima - x.inicio) / 60000)) : 0;
       const pasos = PASOS.filter(([id]) => x.vistas && x.vistas[id] > 0).map(([id, t]) => `<span class="chip">${esc(t)}${x.vistas[id] > 1 ? ' ×' + x.vistas[id] : ''}</span>`).join(' ') || '<span class="chip">Portada</span>';
-      return `<tr><td>${esc(x.dia)}</td><td>${hora(x.inicio)}</td><td>${dur ? dur + ' min' : '< 1 min'}</td><td>${nombreEquipo(x.disp)}</td><td>${pasos}</td><td>${x.mazo ? esc(MAZOS[x.mazo] || x.mazo) : '—'}</td><td>${x.tema ? esc(TEMAS[x.tema] || x.tema) : '—'}</td><td>${x.tirada ? esc(TIRADAS[x.tirada] || x.tirada) : '—'}</td><td>${n0(x.lecturas || 0)}</td><td>${x.cartaHoy ? 'Sí' : '—'}</td></tr>`; }).join('')}</tbody></table></div>`
+      return `<tr><td>${esc(x.dia)}</td><td>${hora(x.inicio)}</td><td>${dur ? dur + ' min' : '< 1 min'}</td><td>${nombreEquipo(x.disp)}</td><td>${pasos}</td><td>${x.mazo ? esc(MAZOS[x.mazo] || x.mazo) : '—'}</td><td>${x.tema ? esc(TEMAS[x.tema] || x.tema) : '—'}</td><td>${x.tirada ? esc(TIRADAS[x.tirada] || x.tirada) : '—'}</td><td>${n0(x.lecturas || 0)}</td><td>${x.cartaHoy ? 'Sí' : '—'}</td></tr>`; }).join('')}</tbody></table></div>${controlPag('ses|' + f.clave, gs)}`
       : '<p class="nota">Todavía no hay visitas medidas asociadas a esta cuenta en este rango. Las visitas se asocian a la cuenta desde que la persona inicia sesión.</p>';
     const ficha = f.tipo === 'cuenta' ? `<dl><div><dt>Identificador</dt><dd>${esc(f.p.uid)}</dd></div><div><dt>Alta</dt><dd>${hora(f.p.creado)}</dd></div><div><dt>Último acceso</dt><dd>${hora(f.p.ultimoAcceso)}</dd></div><div><dt>Accesos con sesión</dt><dd>${n0(f.p.accesos || 0)}</dd></div>${f.p.porPago ? '<div><dt>Suscripción</dt><dd>Mercado Pago · activa</dd></div>' : ''}</dl>` : '';
     return `<tr class="det"><td colspan="8">${ficha}${sub}</td></tr>`;
   }
   function tablaFilas(F) {
+    const gp = pagina('personas', F.length), PF = F.slice(gp.desde, gp.hasta);
     if (!F.length) return vacio(E.buscar ? 'Sin resultados' : 'Todavía no hay personas', E.buscar ? 'Prueba con otro nombre o correo.' : 'Aparecerán cuando alguien visite el sitio o cree su cuenta.');
-    return `<div class="tabla-c"><table><thead><tr><th>Persona</th><th>Correo</th><th>Perfil</th><th>Entró</th><th>Último</th><th>Visitas</th><th>Lecturas</th><th>Equipo</th></tr></thead><tbody>${F.map((f) =>
-      `<tr data-kv="${esc(f.clave)}"><td>${esc(f.nombre)}</td><td>${esc(f.correo)}</td><td>${f.tipo === 'cuenta' ? selPerfil(f.p) + (f.p.porPago ? ' <span class="chip ok" title="Suscripción activa con Mercado Pago">pagado</span>' : '') : '—'}</td><td>${hora(f.entro)}</td><td>${hora(f.ultimo)}</td><td>${n0(f.visitas)}</td><td>${n0(f.lect)}</td><td>${nombreEquipo(f.disp)}</td></tr>${E.abierto === f.clave ? detalleFila(f) : ''}`).join('')}</tbody></table></div>`;
+    return `<div class="tabla-c"><table><thead><tr><th>Persona</th><th>Correo</th><th>Perfil</th><th>Entró</th><th>Último</th><th>Visitas</th><th>Lecturas</th><th>Equipo</th></tr></thead><tbody>${PF.map((f) =>
+      `<tr data-kv="${esc(f.clave)}"><td>${esc(f.nombre)}</td><td>${esc(f.correo)}</td><td>${f.tipo === 'cuenta' ? selPerfil(f.p) + (f.p.porPago ? ' <span class="chip ok" title="Suscripción activa con Mercado Pago">pagado</span>' : '') : '—'}</td><td>${hora(f.entro)}</td><td>${hora(f.ultimo)}</td><td>${n0(f.visitas)}</td><td>${n0(f.lect)}</td><td>${nombreEquipo(f.disp)}</td></tr>${E.abierto === f.clave ? detalleFila(f) : ''}`).join('')}</tbody></table></div>${controlPag('personas', gp)}`;
   }
   const filtrarFilas = (F) => { const q = E.buscar.trim().toLowerCase(); return F.filter((f) => (f.tipo === 'cuenta' || E.verAnon) && (!q || (f.nombre + ' ' + f.correo).toLowerCase().includes(q))); };
 
@@ -296,11 +305,12 @@
     let h = cabeza('Lecturas', 'Cada lectura completada: mazo, tema, tirada y cartas. La pregunta nunca se guarda; solo se sabe si hubo una.', `<button type="button" class="btn chico" id="recargar">Actualizar</button><button type="button" class="btn chico" id="csvLecturas" ${L.length ? '' : 'disabled'}>Descargar CSV</button>`);
     h += `<div class="tarjeta"><div class="filtros">${sel('fMazo', MAZOS, E.fMazo, 'Todos los mazos')}${sel('fTema', TEMAS, E.fTema, 'Todos los temas')}${sel('fTirada', TIRADAS, E.fTirada, 'Todas las tiradas')}${sel('fPregunta', { true: 'Con pregunta', false: 'Sin pregunta' }, E.fPregunta, 'Con o sin pregunta')}</div>`;
     if (!L.length) return h + vacio('Sin lecturas', 'No hay lecturas con esos filtros en el período cargado.') + '</div>';
-    h += `<p class="nota" style="margin-top:12px">${n0(L.length)} lecturas${E.datos.topes.lecturas ? ' (se cargan las 2.000 más recientes)' : ''}. Se muestran las 100 últimas.</p>
-      <div class="tabla-c"><table><thead><tr><th>Cuándo</th><th>Mazo</th><th>Tema</th><th>Tirada</th><th>Cartas</th><th>Pregunta</th><th>Equipo</th></tr></thead><tbody>${L.slice(0, 100).map((l) => `<tr>
+    const gl = pagina('lecturas', L.length);
+    h += `<p class="nota" style="margin-top:12px">${n0(L.length)} lecturas${E.datos.topes.lecturas ? ' (se cargan las 2.000 más recientes)' : ''}, de la más reciente a la más antigua.</p>
+      <div class="tabla-c"><table><thead><tr><th>Cuándo</th><th>Mazo</th><th>Tema</th><th>Tirada</th><th>Cartas</th><th>Pregunta</th><th>Equipo</th></tr></thead><tbody>${L.slice(gl.desde, gl.hasta).map((l) => `<tr>
         <td>${hora(l.fecha)}</td><td>${esc(MAZOS[l.mazo] || l.mazo)}</td><td>${esc(TEMAS[l.tema] || l.tema)}</td><td>${esc(TIRADAS[l.tirada] || l.tirada)}</td>
         <td><div class="cel"><span class="mini">${(l.cartas || []).map((c) => `<img src="../img/${esc(l.mazo)}/${pad(c)}.webp" alt="${esc(nombreCarta(c))}" title="${esc(nombreCarta(c))}" loading="lazy" decoding="async">`).join('')}</span><span>${(l.cartas || []).map((c) => esc(nombreCarta(c))).join(', ')}</span></div></td>
-        <td>${l.pregunta ? 'Sí' : 'No'}</td><td>${l.disp === 'movil' ? 'Celular' : 'Computador'}</td></tr>`).join('')}</tbody></table></div></div>`;
+        <td>${l.pregunta ? 'Sí' : 'No'}</td><td>${l.disp === 'movil' ? 'Celular' : 'Computador'}</td></tr>`).join('')}</tbody></table></div>${controlPag('lecturas', gl)}</div>`;
     return h;
   }
 
@@ -435,12 +445,14 @@
   function enlazar() {
     const r = $('#recargar'); if (r) r.onclick = () => recargar(true);
     $$('[data-ir-s]').forEach((x) => { x.onclick = () => ir(x.dataset.irS); });
-    $$('[data-r]').forEach((b) => { b.onclick = () => { E.rango = Number(b.dataset.r); pintar(); }; });
+    $$('[data-r]').forEach((b) => { b.onclick = () => { E.rango = Number(b.dataset.r); E.pag = {}; pintar(); }; });
+    const enlazarPag = () => $$('[data-pag]').forEach((b) => { b.onclick = (ev) => { ev.stopPropagation(); const [k, d] = b.dataset.pag.split('|'); E.pag[k] = (E.pag[k] || 1) + Number(d); pintar(); }; });
+    enlazarPag();
     const filasClic = () => $$('tr[data-kv]').forEach((tr) => { tr.onclick = (ev) => { if (ev.target.closest('select')) return; E.abierto = E.abierto === tr.dataset.kv ? null : tr.dataset.kv; pintar(); }; });
     filasClic();
-    const b = $('#buscar'); if (b) b.oninput = () => { E.buscar = b.value; E.abierto = null; $('#tablaPersonas').innerHTML = tablaFilas(filtrarFilas(filasPersonas(calc()))); filasClic(); enlazarAsignar(); };
-    const va = $('#verAnon'); if (va) va.onchange = () => { E.verAnon = va.checked; E.abierto = null; pintar(); };
-    [['fMazo', 'fMazo'], ['fTema', 'fTema'], ['fTirada', 'fTirada'], ['fPregunta', 'fPregunta'], ['mazoMapa', 'mazoMapa']].forEach(([id, k]) => { const s = $('#' + id); if (s) s.onchange = () => { E[k] = s.value; pintar(); }; });
+    const b = $('#buscar'); if (b) b.oninput = () => { E.buscar = b.value; E.abierto = null; E.pag.personas = 1; $('#tablaPersonas').innerHTML = tablaFilas(filtrarFilas(filasPersonas(calc()))); filasClic(); enlazarAsignar(); enlazarPag(); };
+    const va = $('#verAnon'); if (va) va.onchange = () => { E.verAnon = va.checked; E.abierto = null; E.pag.personas = 1; pintar(); };
+    [['fMazo', 'fMazo'], ['fTema', 'fTema'], ['fTirada', 'fTirada'], ['fPregunta', 'fPregunta'], ['mazoMapa', 'mazoMapa']].forEach(([id, k]) => { const s = $('#' + id); if (s) s.onchange = () => { E[k] = s.value; E.pag.lecturas = 1; pintar(); }; });
     enlazarAsignar();
     function enlazarAsignar() { $$('[data-asig]').forEach((sel) => { sel.onchange = async () => {
       const uid = sel.dataset.asig, nuevo = sel.value, p = E.datos.personas.find((x) => x.uid === uid); sel.disabled = true;

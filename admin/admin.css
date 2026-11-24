@@ -175,3 +175,6 @@ tr.det table.sub .chip { margin: 1px 2px; }
 .chk { display: flex; align-items: center; gap: 8px; margin: 12px 0 8px; cursor: pointer; }
 
 .enlace-s { background: none; border: 0; padding: 0; color: var(--oro, #e2c17c); font: inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+
+.pag { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 12px; font-size: .9rem; opacity: .85; }
+.pag .btn[disabled] { opacity: .4; cursor: default; }
