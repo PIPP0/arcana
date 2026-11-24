@@ -361,13 +361,14 @@
   pintarDesfile();
 
   /* Mazo de la carta del día: lo elige cada persona en su perfil entre los mazos que tiene disponibles (se recuerda en este dispositivo). */
+  let cambioMazoLocal = 0;
   const mazosParaHoy = () => MAZOS.filter((m) => mazoActivo(m.id)).concat(persVisibles());
   const mazoHoyPref = () => { const u = window.Nube.usuario(); try { return (u && localStorage.getItem('arcana.hoy.mazo.' + u.uid)) || 'rws'; } catch (e) { return 'rws'; } };
   const mazoHoyDe = (carta) => { const id = mazoHoyPref(); return mazosParaHoy().some((m) => m.id === id) && cartaDisponible(carta, id) ? id : 'rws'; };
   function ponerMazoHoy(id) {
     const u = window.Nube.usuario(); if (!u) return;
     try { if (id && id !== 'rws') localStorage.setItem('arcana.hoy.mazo.' + u.uid, id); else localStorage.removeItem('arcana.hoy.mazo.' + u.uid); } catch (e) { /* sigue igual */ }
-    document.dispatchEvent(new CustomEvent('arcana:mazohoy'));
+    document.dispatchEvent(new CustomEvent('arcana:mazohoy')); cambioMazoLocal = Date.now();
     window.Nube.guardarFicha({ mazoHoy: id && id !== 'rws' ? id : '' }).catch(() => { /* queda en este dispositivo */ });
   }
 
@@ -440,6 +441,10 @@
       if (estaba) mostrar(); else pintarEspera();
     }
 
+    document.addEventListener('arcana:hoyvisto', () => {
+      if (!window.Nube.usuario() || visible()) return;
+      try { const h = JSON.parse(localStorage.getItem('arcana.hoy.hist.v1')) || {}; if (h[hoy] === g.carta) { mostrar(); guardarVista(true); } } catch (e) { /* sin datos */ }
+    });
     document.addEventListener('arcana:mazohoy', () => { const estaba = visible(); caras(); if (estaba) { btn.classList.add('vista-carta'); mostrar(); } else pintarEspera(); });
     if (g.vista && window.Nube.usuario()) mostrar(); else pintarEspera();
     btn.addEventListener('click', () => { if (visible()) ampliar(g.carta, mazoHoyDe(g.carta)); else revelar(); });
@@ -888,39 +893,51 @@
   }
   /* Con sesión, el calendario, el mazo de la carta del día, las cartas vistas y los días recuperados viven en la cuenta:
      al entrar desde otro dispositivo se juntan con lo de este (si una fecha difiere, manda la cuenta). Una vez por visita. */
-  let sincronizadoUid = null;
   function sincronizarCuenta() {
     const u = window.Nube.usuario(), f = window.Nube.ficha();
-    if (!u || !f || sincronizadoUid === u.uid) return;
-    sincronizadoUid = u.uid;
-    const subir = {};
-    // calendario
-    const local = leerHist(), nube = f.cal || {}, junto = Object.assign({}, local, nube), sube = {};
+    if (!u || !f) return;
+    const subir = {}; let cambio = false;
+    // calendario: lo de la cuenta manda; lo que solo está aquí se sube
+    const local = leerHist(), nube = f.cal || {}, sube = {};
     Object.keys(local).forEach((d) => { if (nube[d] === undefined && Number.isInteger(local[d])) sube[d] = local[d]; });
-    try { localStorage.setItem(HIST_K, JSON.stringify(junto)); } catch (e) { /* sin almacenamiento */ }
+    const junto = Object.assign({}, local, nube);
+    if (JSON.stringify(junto) !== JSON.stringify(local)) { cambio = true; try { localStorage.setItem(HIST_K, JSON.stringify(junto)); } catch (e) { /* sin almacenamiento */ } }
     if (Object.keys(sube).length) subir.cal = sube;
     // días recuperados de la semana
     const rl = leerRecup(), rn = f.recup && f.recup.sem ? f.recup : null;
     let rr = rl;
     if (rn && rn.sem === rl.sem) rr = { sem: rl.sem, dias: Object.assign({}, rl.dias, rn.dias || {}) };
     else if (rn && rn.sem > rl.sem) rr = { sem: rn.sem, dias: rn.dias || {} };
+    if (JSON.stringify(rr) !== JSON.stringify(rl)) { cambio = true; try { localStorage.setItem(RECUP_K, JSON.stringify(rr)); } catch (e) { /* sigue igual */ } }
     if (rn === null ? Object.keys(rr.dias).length : JSON.stringify(rr) !== JSON.stringify(rn)) subir.recup = rr;
-    try { localStorage.setItem(RECUP_K, JSON.stringify(rr)); } catch (e) { /* sigue igual */ }
-    // mazo de la carta del día: manda la cuenta; si no tiene, se sube el de este dispositivo
+    // mazo de la carta del día: manda la cuenta (salvo que se haya cambiado hace segundos); si no tiene, se sube el de este dispositivo
     try {
-      const k = 'arcana.hoy.mazo.' + u.uid;
-      if (f.mazoHoy) localStorage.setItem(k, f.mazoHoy); else if (localStorage.getItem(k)) subir.mazoHoy = localStorage.getItem(k);
+      const k = 'arcana.hoy.mazo.' + u.uid, actual = localStorage.getItem(k) || '';
+      if (f.mazoHoy) { if (actual !== f.mazoHoy && Date.now() - cambioMazoLocal > 15000) { localStorage.setItem(k, f.mazoHoy); cambio = true; } }
+      else if (actual && actual !== 'rws') subir.mazoHoy = actual;
     } catch (e) { /* sigue igual */ }
     // cartas vistas: se suman
     try {
       const lv = JSON.parse(localStorage.getItem('arcana.cartas.vistas.v1')) || [], nv = f.vistas || [], u2 = [...new Set([...lv, ...nv])];
-      localStorage.setItem('arcana.cartas.vistas.v1', JSON.stringify(u2));
+      if (u2.length !== lv.length) localStorage.setItem('arcana.cartas.vistas.v1', JSON.stringify(u2));
       if (u2.length !== nv.length) subir.vistas = u2;
     } catch (e) { /* sigue igual */ }
     if (Object.keys(subir).length) window.Nube.guardarFicha(subir).catch(() => { /* sin reglas nuevas: queda en este dispositivo */ });
-    pintarCalendario(); document.dispatchEvent(new CustomEvent('arcana:mazohoy'));
+    if (cambio) { pintarCalendario(); document.dispatchEvent(new CustomEvent('arcana:mazohoy')); }
+    document.dispatchEvent(new CustomEvent('arcana:hoyvisto'));
   }
-  window.Nube.alCambiarUsuario((u) => { if (!u) sincronizadoUid = null; else sincronizarCuenta(); });
+  /* Mantener todo igual en cada dispositivo: se vuelve a leer la cuenta al volver a la pestaña y cada minuto mientras se usa. */
+  let ultimaLectura = 0;
+  function traerDeCuenta() {
+    if (document.hidden || !window.Nube.usuario() || Date.now() - ultimaLectura < 20000) return;
+    ultimaLectura = Date.now();
+    window.Nube.refrescarPerfil().catch(() => { /* sin red: se reintenta */ });
+  }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) traerDeCuenta(); });
+  window.addEventListener('focus', traerDeCuenta);
+  window.addEventListener('online', traerDeCuenta);
+  setInterval(traerDeCuenta, 60000);
+  window.Nube.alCambiarUsuario((u) => { if (u) sincronizarCuenta(); });
   async function recuperar(fechas) {
     const u = window.Nube.usuario(); if (!u) { irEntrar('Entra a tu cuenta para recuperar tus días.'); return; }
     const r = leerRecup();
