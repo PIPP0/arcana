@@ -209,7 +209,7 @@
     e.currentTarget.setAttribute('aria-pressed', String(sonido));
     e.currentTarget.textContent = sonido ? 'Sonido: sí' : 'Sonido: no';
     if (btnEst) btnEst.hidden = !sonido || !S;
-    if (!sonido) cerrarMenuSonido(); else sfx.encender();
+    if (!sonido) { cerrarMenuSonido(); if (S) S.suspender(); } else sfx.encender();
   });
   if (btnEst) btnEst.addEventListener('click', () => {
     pintarMenuSonido(); const abrir = menuSon.hidden; menuSon.hidden = !abrir; btnEst.setAttribute('aria-expanded', String(abrir));

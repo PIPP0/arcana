@@ -7,8 +7,25 @@
   const N = { la2: 110, la3: 220, mi4: 329.63, la4: 440, do5: 523.25, re5: 587.33, mi5: 659.25, sol5: 783.99, la5: 880, do6: 1046.5, mi6: 1318.5 };
   const azar = (a, b) => a + Math.random() * (b - a);
 
+  /* iPhone: el sonido de la web se silencia con el interruptor de silencio y el audio se «suspende» solo.
+     Se pide el modo «reproducción» y se mantiene un audio mudo para que el sistema deje sonar la página. */
+  let mudo = null;
+  function desbloquearIOS() {
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) { /* no disponible */ }
+    try {
+      if (!mudo) {
+        const n = 4000, b = new DataView(new ArrayBuffer(44 + n)); const w = (o2, t) => { for (let i = 0; i < t.length; i++) b.setUint8(o2 + i, t.charCodeAt(i)); };
+        w(0, 'RIFF'); b.setUint32(4, 36 + n, true); w(8, 'WAVEfmt '); b.setUint32(16, 16, true); b.setUint16(20, 1, true); b.setUint16(22, 1, true);
+        b.setUint32(24, 8000, true); b.setUint32(28, 8000, true); b.setUint16(32, 1, true); b.setUint16(34, 8, true); w(36, 'data'); b.setUint32(40, n, true);
+        for (let i = 0; i < n; i++) b.setUint8(44 + i, 128);
+        mudo = new Audio(URL.createObjectURL(new Blob([b.buffer], { type: 'audio/wav' }))); mudo.loop = true; mudo.setAttribute('playsinline', '');
+      }
+      const p = mudo.play(); if (p && p.catch) p.catch(() => { /* sin permiso aún */ });
+    } catch (e) { /* sigue sin el truco */ }
+  }
   function iniciar() {
-    if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
+    desbloquearIOS();
+    if (ctx) { if (ctx.state !== 'running') ctx.resume(); return; }
     ctx = new (window.AudioContext || window.webkitAudioContext)();
     const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -22; comp.ratio.value = 5; comp.connect(ctx.destination);
     seco = ctx.createGain(); seco.gain.value = 0.9; seco.connect(comp);
@@ -159,14 +176,18 @@
   let actual = 1;
   try { const v = Number(localStorage.getItem(CLAVE)); if (v >= 1 && v <= OPCIONES.length) actual = v; } catch (e) { /* sin almacenamiento */ }
   function sonar(acc) {
-    try { iniciar(); ACC[acc](OPCIONES[actual - 1], ctx.currentTime + 0.02); } catch (e) { /* sin audio: la lectura sigue igual */ }
+    try {
+      iniciar();
+      const toca = () => { try { ACC[acc](OPCIONES[actual - 1], ctx.currentTime + 0.02); } catch (e) { /* sin audio */ } };
+      if (ctx.state === 'running') toca(); else ctx.resume().then(toca).catch(() => { /* el sistema no lo permitió */ }); // en iPhone el audio nace en pausa hasta que se reanuda
+    } catch (e) { /* sin audio: la lectura sigue igual */ }
   }
   window.ArcanaSonido = {
     estilos: OPCIONES.map((o) => ({ id: o.id, nombre: o.nombre, desc: o.desc })),
     actual: () => actual,
     poner(id) { if (id >= 1 && id <= OPCIONES.length) { actual = id; try { localStorage.setItem(CLAVE, String(id)); } catch (e) { /* sigue igual */ } } },
     sonar,
-    suspender() { if (ctx && ctx.state === 'running') ctx.suspend(); },
-    reanudar() { if (ctx && ctx.state === 'suspended') ctx.resume(); }
+    suspender() { if (mudo) mudo.pause(); if (ctx && ctx.state === 'running') ctx.suspend(); },
+    reanudar() { if (mudo) { const p = mudo.play(); if (p && p.catch) p.catch(() => {}); } if (ctx && ctx.state !== 'running') ctx.resume(); }
   };
 })();
