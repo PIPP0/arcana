@@ -179,6 +179,7 @@
      Cinco estilos (sonido.js). La persona elige el suyo con la flecha junto a «Sonido». */
   let sonido = false;
   const S = window.ArcanaSonido;
+  let cambioSonidoLocal = 0;
   const sonidoOk = () => permisos().sonido !== false;
   const estiloOk = (id) => ((permisos().estilos) || {})[id] !== false;
   const dice = (acc) => { if (sonido && S && sonidoOk()) S.sonar(acc); };
@@ -218,7 +219,8 @@
   if (menuSon) menuSon.addEventListener('click', (e) => {
     const b = e.target.closest('[data-estilo]'); if (!b) return;
     if (b.dataset.bloq) { cerrarMenuSonido(); irDesbloqueo((P) => (P.estilos || {})[b.dataset.estilo] !== false, 'Este estilo de sonido'); return; }
-    S.poner(Number(b.dataset.estilo)); pintarMenuSonido(); sfx.encender(); cerrarMenuSonido(); btnEst.focus();
+    S.poner(Number(b.dataset.estilo)); cambioSonidoLocal = Date.now(); pintarMenuSonido(); sfx.encender(); cerrarMenuSonido(); btnEst.focus();
+    if (window.Nube.usuario()) window.Nube.guardarFicha({ sonido: S.actual() }).catch(() => { /* queda en este dispositivo */ });
   });
   document.addEventListener('click', (e) => { if (menuSon && !menuSon.hidden && !e.target.closest('.sonido-caja')) cerrarMenuSonido(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && menuSon && !menuSon.hidden) { cerrarMenuSonido(); btnEst.focus(); } });
@@ -319,7 +321,10 @@
   /* cupo diario de lecturas (se cuenta en este dispositivo) */
   const diaChile = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Santiago' }).format(new Date());
   function lecturasHoy() { try { const c = JSON.parse(localStorage.getItem('arcana.cupo.v1')); return c && c.dia === diaChile() ? c.n : 0; } catch (e) { return 0; } }
-  function contarLectura() { try { localStorage.setItem('arcana.cupo.v1', JSON.stringify({ dia: diaChile(), n: lecturasHoy() + 1 })); } catch (e) { /* sigue igual */ } }
+  function contarLectura() {
+    try { localStorage.setItem('arcana.cupo.v1', JSON.stringify({ dia: diaChile(), n: lecturasHoy() + 1 })); } catch (e) { /* sigue igual */ }
+    if (window.Nube.usuario()) window.Nube.guardarFicha({ cupo: { dia: diaChile(), n: lecturasHoy() } }).catch(() => { /* queda en este dispositivo */ });
+  }
   const tope = () => { const l = permisos().lecturasDia; return typeof l === 'number' ? l : null; };
   const cupoAgotado = () => tope() !== null && lecturasHoy() >= tope();
   function textoCupo() {
@@ -924,6 +929,23 @@
     } catch (e) { /* sigue igual */ }
     if (Object.keys(subir).length) window.Nube.guardarFicha(subir).catch(() => { /* sin reglas nuevas: queda en este dispositivo */ });
     if (cambio) { pintarCalendario(); document.dispatchEvent(new CustomEvent('arcana:mazohoy')); }
+    // cupo diario de lecturas: se junta el mayor número del día
+    try {
+      const cl = JSON.parse(localStorage.getItem('arcana.cupo.v1') || 'null') || { dia: '', n: 0 }, cn = f.cupo || { dia: '', n: 0 };
+      if (cn.dia === cl.dia) { if (cn.n > cl.n) { localStorage.setItem('arcana.cupo.v1', JSON.stringify(cn)); cambio = true; } else if (cl.n > cn.n) subir.cupo = cl; }
+      else if (cn.dia > cl.dia) { localStorage.setItem('arcana.cupo.v1', JSON.stringify(cn)); cambio = true; }
+      else if (cl.dia > cn.dia && cl.dia) subir.cupo = cl;
+    } catch (e) { /* sigue igual */ }
+    // estilo de sonido
+    try {
+      if (S && f.sonido >= 1 && f.sonido <= 5) { if (S.actual() !== f.sonido && estiloOk(f.sonido) && Date.now() - cambioSonidoLocal > 15000) { S.poner(f.sonido); pintarMenuSonido(); } }
+      else if (S && !f.sonido && S.actual() !== 1) subir.sonido = S.actual();
+    } catch (e) { /* sigue igual */ }
+    // lecturas guardadas: si cambió en otro dispositivo (o hay alguna sin subir), se vuelven a juntar
+    try {
+      const vistoMod = Number(localStorage.getItem(MOD_K) || 0), subidasL = new Set(leerLista(SUB_K));
+      if ((f.lectMod || 0) !== vistoMod || leer().some((l) => !subidasL.has(l.id)) || leerLista(BOR_K).length) sincronizarLecturas();
+    } catch (e) { /* sigue igual */ }
     document.dispatchEvent(new CustomEvent('arcana:hoyvisto'));
   }
   /* Mantener todo igual en cada dispositivo: se vuelve a leer la cuenta al volver a la pestaña y cada minuto mientras se usa. */
@@ -1032,7 +1054,59 @@
     if (e.target.closest('#calIr')) { ir('inicio'); setTimeout(() => { const h = $('#hoy'); if (h) h.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 80); }
   });
 
-  /* ---------- guardar / historial (solo en este dispositivo) ---------- */
+  /* ---------- guardar / historial (con sesión, igual en todos tus dispositivos; privado: solo tú lo ves) ---------- */
+  const SUB_K = 'arcana.lecturas.subidas.v1', BOR_K = 'arcana.lecturas.borradas.v1', MOD_K = 'arcana.lectmod.v1';
+  const leerLista = (k) => { try { const a = JSON.parse(localStorage.getItem(k)); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
+  const guardarLista = (k, a) => { try { localStorage.setItem(k, JSON.stringify([...new Set(a)])); } catch (e) { /* sigue igual */ } };
+  function avisarCambioLecturas() {
+    const t = Date.now();
+    try { localStorage.setItem(MOD_K, String(t)); } catch (e) { /* sigue igual */ }
+    window.Nube.guardarFicha({ lectMod: t }).catch(() => { /* queda en este dispositivo */ });
+  }
+  function lecturaANube(l) {
+    if (!window.Nube.usuario()) return;
+    l.mod = l.mod || Date.now();
+    window.Nube.guardadaPoner(l).then(() => { guardarLista(SUB_K, leerLista(SUB_K).concat(l.id)); avisarCambioLecturas(); }).catch(() => { /* se sube en la próxima sincronización */ });
+  }
+  function borrarLecturaNube(id) {
+    const estaba = leerLista(SUB_K).includes(id);
+    guardarLista(SUB_K, leerLista(SUB_K).filter((x) => x !== id));
+    if (!window.Nube.usuario()) return;
+    if (estaba) guardarLista(BOR_K, leerLista(BOR_K).concat(id));
+    window.Nube.guardadaBorrar(id).then(() => { guardarLista(BOR_K, leerLista(BOR_K).filter((x) => x !== id)); avisarCambioLecturas(); }).catch(() => { /* queda pendiente de borrar */ });
+  }
+  let sincLect = false;
+  async function sincronizarLecturas() {
+    const u = window.Nube.usuario(); if (!u || sincLect) return;
+    sincLect = true;
+    try {
+      let bor = leerLista(BOR_K);
+      for (const id of bor) { try { await window.Nube.guardadaBorrar(id); bor = bor.filter((x) => x !== id); } catch (e) { /* se reintenta */ } }
+      guardarLista(BOR_K, bor);
+      const nube = await window.Nube.guardadasLeer(), mapN = new Map(nube.map((x) => [x.id, x]));
+      const subidas = new Set(leerLista(SUB_K)), local = leer(), quedan = [], suben = []; let cambio = false;
+      local.forEach((l) => {
+        const c = mapN.get(l.id);
+        if (!c) { if (subidas.has(l.id)) { cambio = true; return; } l.mod = l.mod || Date.parse(l.fecha) || Date.now(); suben.push(l); quedan.push(l); return; } // si ya estaba subida y no está, la borraron en otro dispositivo
+        if ((c.mod || 0) > (l.mod || 0)) { l.nota = c.nota || ''; if (c.pregunta) l.pregunta = c.pregunta; l.mod = c.mod; cambio = true; }
+        else if ((l.mod || 0) > (c.mod || 0)) suben.push(l);
+        quedan.push(l);
+      });
+      nube.forEach((c) => { if (!local.some((l) => l.id === c.id) && !bor.includes(c.id)) { quedan.push({ id: c.id, fecha: c.fecha, mazo: c.mazo, tema: c.tema, tirada: c.tirada, cartas: c.cartas || [], pregunta: c.pregunta || '', nota: c.nota || '', mod: c.mod }); cambio = true; } });
+      quedan.sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
+      let escribio = false;
+      const subidasOk = [];
+      for (const l of suben) { try { await window.Nube.guardadaPoner(l); escribio = true; subidasOk.push(l.id); } catch (e) { /* se reintenta */ } }
+      if (cambio || suben.length) escribir(quedan);
+      guardarLista(SUB_K, subidasOk.concat(nube.filter((c) => !bor.includes(c.id)).map((c) => c.id)));
+      const f = window.Nube.ficha() || {};
+      try { localStorage.setItem(MOD_K, String(f.lectMod || 0)); } catch (e) { /* sigue igual */ }
+      if (escribio) avisarCambioLecturas();
+      if (cambio) { pintarHistorial(); pintarCuenta(); }
+    } catch (e) { /* sin red o sin reglas nuevas: quedan en este dispositivo */ }
+    sincLect = false;
+  }
+  /* ---------- guardar / historial ---------- */
   function leer() { try { return JSON.parse(localStorage.getItem(CLAVE)) || []; } catch (e) { return []; } }
   function escribir(a) { try { localStorage.setItem(CLAVE, JSON.stringify(a)); return true; } catch (e) { return false; } }
 
@@ -1049,7 +1123,7 @@
       a.unshift({ id: estado.guardada, fecha: new Date().toISOString(), mazo: estado.mazo, tema: estado.tema, tirada: estado.tirada.id,
         cartas: cartasDeLectura(), pregunta: estado.pregunta, nota });
     }
-    if (escribir(a)) { sfx.guardar(); aviso('Lectura guardada en tu espacio.'); e.target.textContent = 'Actualizar nota'; }
+    if (escribir(a)) { const gl = a.find((x) => x.id === estado.guardada); if (gl) { gl.mod = Date.now(); escribir(a); lecturaANube(gl); } sfx.guardar(); aviso('Lectura guardada en tu espacio.'); e.target.textContent = 'Actualizar nota'; }
     else { estado.guardada = false; aviso('No se pudo guardar en este navegador.'); }
   });
 
@@ -1113,14 +1187,14 @@
     const v = e.target.closest('[data-ver]'); if (v) { ampliar(Number(v.dataset.ver), detMazo); return; }
     if (e.target.id === 'btnDetNota') {
       const a = leer(), r = a.find((x) => x.id === detId); if (!r) return;
-      r.nota = ($('#detNota').value || '').trim();
-      if (escribir(a)) { sfx.guardar(); aviso('Nota guardada.'); } else aviso('No se pudo guardar en este navegador.');
+      r.nota = ($('#detNota').value || '').trim(); r.mod = Date.now();
+      if (escribir(a)) { lecturaANube(r); sfx.guardar(); aviso('Nota guardada.'); } else aviso('No se pudo guardar en este navegador.');
       return;
     }
     if (e.target.id === 'btnDetBorrar') {
-      confirmarModal({ titulo: '¿Borrar esta lectura?', texto: 'Se elimina de este dispositivo, con su nota. No se puede deshacer.', boton: 'Borrar lectura' }).then((ok) => {
+      confirmarModal({ titulo: '¿Borrar esta lectura?', texto: 'Se elimina de tu cuenta y de todos tus dispositivos, con su nota. No se puede deshacer.', boton: 'Borrar lectura' }).then((ok) => {
         if (!ok) return;
-        escribir(leer().filter((x) => x.id !== detId)); detId = null; ir('espacio'); aviso('Lectura borrada.');
+        borrarLecturaNube(detId); escribir(leer().filter((x) => x.id !== detId)); detId = null; ir('espacio'); aviso('Lectura borrada.');
       });
     }
   });
@@ -1181,9 +1255,9 @@
     if (e.target.closest('#carAnt') && c) { c.scrollBy({ left: -pasoCarrusel(c), behavior: 'smooth' }); return; }
     if (e.target.closest('#carSig') && c) { c.scrollBy({ left: pasoCarrusel(c), behavior: 'smooth' }); return; }
     const b = e.target.closest('[data-borrar]'); if (!b) return;
-    confirmarModal({ titulo: '¿Borrar esta lectura?', texto: 'Se elimina de este dispositivo, con su nota. No se puede deshacer.', boton: 'Borrar lectura' }).then((ok) => {
+    confirmarModal({ titulo: '¿Borrar esta lectura?', texto: 'Se elimina de tu cuenta y de todos tus dispositivos, con su nota. No se puede deshacer.', boton: 'Borrar lectura' }).then((ok) => {
       if (!ok) return;
-      escribir(leer().filter((x) => x.id !== b.dataset.borrar)); pintarHistorial(); aviso('Lectura borrada.');
+      borrarLecturaNube(b.dataset.borrar); escribir(leer().filter((x) => x.id !== b.dataset.borrar)); pintarHistorial(); aviso('Lectura borrada.');
     });
   });
 
@@ -1304,7 +1378,7 @@ ${mazosParaHoy().length > 1 ? `<section class="tarjeta-p"><h3>Mazo de tu carta d
       <section class="tarjeta-p"><h3>Tu plan</h3><p><b>${NOMBRE_PERFIL[p]}</b> · ${resumenPerfil()}.</p><p>${cupo || 'Lecturas sin límite.'}</p>
         ${f.porPago ? '<p>Suscripción activa con Mercado Pago. Se renueva cada mes.</p>' : ''}
         <div class="acciones">${p !== 'premium' ? '<button type="button" class="btn primario chico" data-planes="1">Descubre Premium →</button>' : ''}${f.porPago ? '<button type="button" class="btn chico" id="btnCancelarSus">Cancelar suscripción</button>' : ''}</div></section>
-      <section class="tarjeta-p"><h3>Tu espacio</h3><p>${lect ? `${lect} ${lect === 1 ? 'lectura guardada' : 'lecturas guardadas'} en este dispositivo.` : 'Todavía no guardas ninguna lectura en este dispositivo.'}</p>
+      <section class="tarjeta-p"><h3>Tu espacio</h3><p>${lect ? `${lect} ${lect === 1 ? 'lectura guardada' : 'lecturas guardadas'} en tu cuenta.` : 'Todavía no guardas ninguna lectura.'}</p>
         <div class="acciones"><button type="button" class="btn chico" data-ir="espacio">Ver mi calendario y mis lecturas</button></div></section>
       <div class="acciones fin-p"><button type="button" class="btn" id="btnSalir">Salir de mi cuenta</button><button type="button" class="btn chico" id="btnBorrarFicha">Borrar mi ficha</button></div>`;
   }

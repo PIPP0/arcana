@@ -156,7 +156,7 @@
     try {
       const s = await c.fs.getDoc(c.fs.doc(c.db, 'personas', u.uid));
       const p = s.exists() && PERFILES.includes(s.data().perfil) ? s.data().perfil : 'free';
-      if (s.exists()) { const d = s.data(); ficha = { nombre: d.nombre || '', avatar: d.avatar || null, hoy: d.hoy && typeof d.hoy === 'object' ? d.hoy : null, cal: d.cal && typeof d.cal === 'object' ? d.cal : {}, mazoHoy: typeof d.mazoHoy === 'string' ? d.mazoHoy : '', vistas: Array.isArray(d.vistas) ? d.vistas : [], recup: d.recup && typeof d.recup === 'object' ? d.recup : null, porPago: d.porPago === true, accesos: d.accesos || 0, creado: d.creado && d.creado.toDate ? d.creado.toDate() : null }; avisarU(); }
+      if (s.exists()) { const d = s.data(); ficha = { nombre: d.nombre || '', avatar: d.avatar || null, hoy: d.hoy && typeof d.hoy === 'object' ? d.hoy : null, cal: d.cal && typeof d.cal === 'object' ? d.cal : {}, mazoHoy: typeof d.mazoHoy === 'string' ? d.mazoHoy : '', vistas: Array.isArray(d.vistas) ? d.vistas : [], recup: d.recup && typeof d.recup === 'object' ? d.recup : null, cupo: d.cupo && typeof d.cupo === 'object' ? d.cupo : null, sonido: Number.isInteger(d.sonido) ? d.sonido : 0, lectMod: Number.isInteger(d.lectMod) ? d.lectMod : 0, porPago: d.porPago === true, accesos: d.accesos || 0, creado: d.creado && d.creado.toDate ? d.creado.toDate() : null }; avisarU(); }
       if (p !== miPerfil) { miPerfil = p; avisarF(); }
       guardarCuenta();
     } catch (e) { /* sin ficha o sin red: se queda con el plan recordado (o Free) */ }
@@ -247,15 +247,38 @@
       if ('cal' in cambios && cambios.cal) Object.keys(cambios.cal).forEach((f) => { const v = cambios.cal[f]; if (/^\d{4}-\d{2}-\d{2}$/.test(f) && Number.isInteger(v) && v >= 0 && v <= 77) datos['cal.' + f] = v; });
       if ('mazoHoy' in cambios) datos.mazoHoy = cambios.mazoHoy ? String(cambios.mazoHoy).slice(0, 20) : c.fs.deleteField();
       if ('vistas' in cambios && Array.isArray(cambios.vistas)) datos.vistas = cambios.vistas.filter((x) => Number.isInteger(x) && x >= 0 && x <= 77).slice(0, 78);
+      if ('cupo' in cambios && cambios.cupo && typeof cambios.cupo.dia === 'string' && Number.isInteger(cambios.cupo.n)) datos.cupo = { dia: cambios.cupo.dia.slice(0, 10), n: Math.max(0, Math.min(10000, cambios.cupo.n)) };
+      if ('sonido' in cambios && Number.isInteger(cambios.sonido) && cambios.sonido >= 1 && cambios.sonido <= 5) datos.sonido = cambios.sonido;
+      if ('lectMod' in cambios && Number.isInteger(cambios.lectMod)) datos.lectMod = cambios.lectMod;
       if ('recup' in cambios && cambios.recup && typeof cambios.recup.sem === 'string') datos.recup = { sem: cambios.recup.sem.slice(0, 10), dias: Object.assign({}, cambios.recup.dias || {}) };
       await c.fs.updateDoc(c.fs.doc(c.db, 'personas', u.uid), datos);
       const nuevaCal = 'cal' in cambios && cambios.cal ? { cal: Object.assign({}, (ficha && ficha.cal) || {}, cambios.cal) } : {};
-      ficha = Object.assign({}, ficha || {}, nuevaCal, 'mazoHoy' in cambios ? { mazoHoy: cambios.mazoHoy || '' } : {}, 'vistas' in cambios && Array.isArray(cambios.vistas) ? { vistas: datos.vistas } : {}, 'recup' in cambios && datos.recup ? { recup: datos.recup } : {}, 'nombre' in cambios ? { nombre: datos.nombre } : {}, 'avatar' in cambios ? { avatar: cambios.avatar || null } : {}, 'hoy' in cambios && cambios.hoy ? { hoy: datos.hoy } : {});
+      ficha = Object.assign({}, ficha || {}, nuevaCal, 'mazoHoy' in cambios ? { mazoHoy: cambios.mazoHoy || '' } : {}, 'vistas' in cambios && Array.isArray(cambios.vistas) ? { vistas: datos.vistas } : {}, 'recup' in cambios && datos.recup ? { recup: datos.recup } : {}, datos.cupo ? { cupo: datos.cupo } : {}, datos.sonido ? { sonido: datos.sonido } : {}, 'lectMod' in datos ? { lectMod: datos.lectMod } : {}, 'nombre' in cambios ? { nombre: datos.nombre } : {}, 'avatar' in cambios ? { avatar: cambios.avatar || null } : {}, 'hoy' in cambios && cambios.hoy ? { hoy: datos.hoy } : {});
       avisarU();
+    },
+    /* Lecturas guardadas en la cuenta (privadas: solo la persona las lee). */
+    async guardadasLeer() {
+      const c = await conectar(); const u = c && c.auth.currentUser; if (!u || u.isAnonymous) throw new Error('sin-sesion');
+      const s = await c.fs.getDocs(c.fs.collection(c.db, 'personas', u.uid, 'guardadas'));
+      return s.docs.map((d) => Object.assign({ id: d.id }, d.data()));
+    },
+    async guardadaPoner(l) {
+      const c = await conectar(); const u = c && c.auth.currentUser; if (!u || u.isAnonymous) throw new Error('sin-sesion');
+      const cartas = (l.cartas || []).filter((x) => Number.isInteger(x) && x >= 0 && x <= 77).slice(0, 3);
+      if (!cartas.length || !l.id) throw new Error('lectura-invalida');
+      await c.fs.setDoc(c.fs.doc(c.db, 'personas', u.uid, 'guardadas', String(l.id).slice(0, 40)), {
+        fecha: String(l.fecha || '').slice(0, 40), mazo: String(l.mazo || '').slice(0, 20), tema: String(l.tema || '').slice(0, 20), tirada: String(l.tirada || '').slice(0, 20),
+        cartas, pregunta: String(l.pregunta || '').slice(0, 600), nota: String(l.nota || '').slice(0, 1000), mod: Number(l.mod) || Date.now()
+      });
+    },
+    async guardadaBorrar(id) {
+      const c = await conectar(); const u = c && c.auth.currentUser; if (!u || u.isAnonymous) throw new Error('sin-sesion');
+      await c.fs.deleteDoc(c.fs.doc(c.db, 'personas', u.uid, 'guardadas', String(id).slice(0, 40)));
     },
     async salir() { const c = await conectar(); if (c) await c.au.signOut(c.auth); },
     async borrarMiFicha() {
       const c = await conectar(); const u = c && c.auth.currentUser; if (!u || u.isAnonymous) return;
+      try { const s = await c.fs.getDocs(c.fs.collection(c.db, 'personas', u.uid, 'guardadas')); for (const d of s.docs) await c.fs.deleteDoc(d.ref); } catch (e) { /* sin lecturas guardadas */ }
       await c.fs.deleteDoc(c.fs.doc(c.db, 'personas', u.uid));
     }
   };

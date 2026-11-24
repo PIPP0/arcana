@@ -181,7 +181,7 @@
     <div class="temas-int" id="listaTemas" role="radiogroup" aria-label="Tema de la lectura"></div>
     <label class="campo" for="pregunta">Tu pregunta <span>(opcional)</span></label>
     <textarea id="pregunta" autocomplete="off" rows="3" maxlength="240" placeholder="Por ejemplo: ¿qué necesito mirar antes de decidir?"></textarea>
-    <p class="nota izq">Tu pregunta se queda en este dispositivo. No se envía a ningún servidor.</p>
+    <p class="nota izq">Tu pregunta no se envía a ningún servidor. Solo se guarda si tú guardas la lectura, y solo tú la ves.</p>
     <div class="acciones"><button type="button" class="btn primario" data-ir="tirada">Continuar</button></div>
   </section>
 
@@ -270,12 +270,12 @@
       </div>
       <div class="cal-det" id="calDet" aria-live="polite"></div>
     </section>
-    <p class="bajada" style="margin-top:22px">Tus lecturas guardadas viven solo en este dispositivo. Puedes borrarlas cuando quieras.</p>
+    <p class="bajada" style="margin-top:22px">Tus lecturas guardadas, con sus notas, quedan en tu cuenta y las ves igual en todos tus dispositivos. Solo tú las puedes leer. Puedes borrarlas cuando quieras.</p>
     <div class="cuenta" id="cuentaCaja" hidden><h3>Tu cuenta</h3><div id="cuentaEstado"></div></div>
     <div id="historial"></div>
     <section class="tarjeta-p traspaso" id="traspaso">
       <h3>Llevar mis datos</h3>
-      <p>Tu calendario y tu carta del día quedan en tu cuenta si entras; tus lecturas, notas y otras preferencias viven en este navegador. Descárgalos en un archivo y cárgalos en otro dispositivo o en una dirección nueva de ARCANA. El archivo es tuyo: no se envía a ningún servidor.</p>
+      <p>Si entras con tu cuenta, tus lecturas, notas, calendario y preferencias se guardan en ella y se ven igual en todos tus dispositivos. Sin cuenta viven en este navegador: descárgalos en un archivo y cárgalos en otro dispositivo o en una dirección nueva de ARCANA. El archivo es tuyo: no se envía a ningún servidor.</p>
       <div class="acciones"><button type="button" class="btn chico primario" id="btnExportar">Descargar mis datos</button><button type="button" class="btn chico" id="btnImportar">Cargar mis datos</button><input type="file" id="archivoDatos" accept="application/json,.json" hidden></div>
     </section>
   </section>
@@ -310,12 +310,12 @@
 <div class="aviso" id="aviso" role="status" aria-live="polite"></div>
 
 <script src="nube-config.js?v=38"></script>
-<script src="nube.js?v=35"></script>
+<script src="nube.js?v=36"></script>
 <script src="mazos-pers.js?v=9"></script>
 <script>if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) document.write('<script src="mazos-pers.local.js"><\/script>');</script>
 <script src="cards.js?v=35"></script>
 <script src="menores.js?v=35"></script>
 <script src="sonido.js?v=4"></script>
-<script src="app.js?v=86"></script>
+<script src="app.js?v=87"></script>
 </body>
 </html>

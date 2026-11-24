@@ -119,7 +119,7 @@ service cloud.firestore {
         && (!('porPago' in request.resource.data) || request.resource.data.porPago == false);
       // Su propio nombre y avatar (un avatar entre cinco, o ninguno).
       allow update: if signedIn() && request.auth.uid == uid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nombre', 'avatar', 'hoy', 'cal', 'mazoHoy', 'vistas', 'recup'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nombre', 'avatar', 'hoy', 'cal', 'mazoHoy', 'vistas', 'recup', 'cupo', 'sonido', 'lectMod'])
         && (!('nombre' in request.resource.data) || (request.resource.data.nombre is string && request.resource.data.nombre.size() <= 80))
         && (!('avatar' in request.resource.data) || request.resource.data.avatar in ['sol', 'luna', 'estrella', 'sacerdotisa', 'mago'])
         && (!('hoy' in request.resource.data) || (request.resource.data.hoy is map && request.resource.data.hoy.keys().hasOnly(['dia', 'carta'])
@@ -129,9 +129,12 @@ service cloud.firestore {
         && (!('cal' in request.resource.data) || (request.resource.data.cal is map && request.resource.data.cal.size() <= 800))
         && (!('mazoHoy' in request.resource.data) || (request.resource.data.mazoHoy is string && request.resource.data.mazoHoy.size() <= 20))
         && (!('vistas' in request.resource.data) || (request.resource.data.vistas is list && request.resource.data.vistas.size() <= 78))
-        && (!('recup' in request.resource.data) || (request.resource.data.recup is map && request.resource.data.recup.keys().hasOnly(['sem', 'dias'])));
+        && (!('recup' in request.resource.data) || (request.resource.data.recup is map && request.resource.data.recup.keys().hasOnly(['sem', 'dias'])))
+        && (!('cupo' in request.resource.data) || (request.resource.data.cupo is map && request.resource.data.cupo.keys().hasOnly(['dia', 'n'])))
+        && (!('sonido' in request.resource.data) || (request.resource.data.sonido is int && request.resource.data.sonido >= 1 && request.resource.data.sonido <= 5))
+        && (!('lectMod' in request.resource.data) || request.resource.data.lectMod is int);
       allow update: if signedIn() && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(['nombre', 'email', 'creado', 'ultimoAcceso', 'accesos', 'perfil', 'avatar', 'hoy', 'cal', 'mazoHoy', 'vistas', 'recup', 'porPago', 'mpId'])
+        && request.resource.data.keys().hasOnly(['nombre', 'email', 'creado', 'ultimoAcceso', 'accesos', 'perfil', 'avatar', 'hoy', 'cal', 'mazoHoy', 'vistas', 'recup', 'cupo', 'sonido', 'lectMod', 'porPago', 'mpId'])
         && request.resource.data.get('perfil', null) == resource.data.get('perfil', null)
         && request.resource.data.get('porPago', null) == resource.data.get('porPago', null)
         && request.resource.data.get('mpId', null) == resource.data.get('mpId', null)
@@ -142,6 +145,24 @@ service cloud.firestore {
         && request.resource.data.ultimoAcceso == request.time
         && request.resource.data.accesos == resource.data.accesos + 1;
       allow delete: if signedIn() && request.auth.uid == uid;
+
+      // Lecturas que la persona guarda (con su pregunta y su nota). PRIVADAS: solo la persona las lee y las escribe;
+      // ni el administrador puede leerlas (la regla de arriba no cubre las subcolecciones).
+      match /guardadas/{lid} {
+        allow read, delete: if signedIn() && request.auth.uid == uid;
+        allow create, update: if signedIn() && request.auth.uid == uid
+          && lid.size() >= 3 && lid.size() <= 40
+          && request.resource.data.keys().hasOnly(['fecha', 'mazo', 'tema', 'tirada', 'cartas', 'pregunta', 'nota', 'mod'])
+          && request.resource.data.keys().hasAll(['fecha', 'mazo', 'tema', 'tirada', 'cartas', 'mod'])
+          && request.resource.data.fecha is string && request.resource.data.fecha.size() <= 40
+          && request.resource.data.mazo is string && request.resource.data.mazo.size() <= 20
+          && request.resource.data.tema is string && request.resource.data.tema.size() <= 20
+          && request.resource.data.tirada is string && request.resource.data.tirada.size() <= 20
+          && request.resource.data.cartas is list && request.resource.data.cartas.size() >= 1 && request.resource.data.cartas.size() <= 3
+          && (!('pregunta' in request.resource.data) || (request.resource.data.pregunta is string && request.resource.data.pregunta.size() <= 600))
+          && (!('nota' in request.resource.data) || (request.resource.data.nota is string && request.resource.data.nota.size() <= 1000))
+          && request.resource.data.mod is int;
+      }
     }
   }
 }
