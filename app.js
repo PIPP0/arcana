@@ -368,6 +368,7 @@
     const u = window.Nube.usuario(); if (!u) return;
     try { if (id && id !== 'rws') localStorage.setItem('arcana.hoy.mazo.' + u.uid, id); else localStorage.removeItem('arcana.hoy.mazo.' + u.uid); } catch (e) { /* sigue igual */ }
     document.dispatchEvent(new CustomEvent('arcana:mazohoy'));
+    window.Nube.guardarFicha({ mazoHoy: id && id !== 'rws' ? id : '' }).catch(() => { /* queda en este dispositivo */ });
   }
 
   /* Cartas ya usadas en el mes de un día (calendario + la carta de hoy), para que ninguna se repita dentro del mismo mes. */
@@ -625,6 +626,7 @@
   function preferirNuevas() {
     if (estado.confirmada) return; estado.confirmada = true;
     let vistas; try { const a = JSON.parse(localStorage.getItem(VISTAS_K)); vistas = new Set(Array.isArray(a) ? a : []); } catch (e) { vistas = new Set(); }
+    ((window.Nube.ficha() || {}).vistas || []).forEach((x) => vistas.add(x));
     if (estado.orden.every((c) => vistas.has(c))) vistas = new Set();
     const libres = estado.orden.map((c, k) => k).filter((k) => !estado.elegidas.includes(k) && !vistas.has(estado.orden[k])), buf = new Uint32Array(1);
     estado.elegidas.forEach((k) => {
@@ -634,6 +636,7 @@
     });
     estado.elegidas.forEach((k) => vistas.add(estado.orden[k]));
     try { localStorage.setItem(VISTAS_K, JSON.stringify([...vistas])); } catch (e) { /* sin almacenamiento: queda al azar */ }
+    if (window.Nube.usuario()) window.Nube.guardarFicha({ vistas: [...vistas] }).catch(() => { /* queda en este dispositivo */ });
   }
   $('#btnConfirmar').addEventListener('click', () => {
     preferirNuevas(); sfx.confirmar(); pintarLectura(); ir('lectura');
@@ -829,7 +832,7 @@
     window.Nube.lectura({ mazo: mz, tema: estado.tema, tirada: estado.tirada.id, cartas: ids, pregunta: !!estado.pregunta });
   }
 
-  /* ---------- calendario de la carta del día (solo en este dispositivo) ---------- */
+  /* ---------- calendario de la carta del día (con sesión, igual en todos tus dispositivos) ---------- */
   const HIST_K = 'arcana.hoy.hist.v1';
   const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
   const diaHoy = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Santiago' }).format(new Date());
@@ -837,6 +840,7 @@
   function anotarDia(dia, carta) {
     const h = leerHist(); h[dia] = carta;
     try { localStorage.setItem(HIST_K, JSON.stringify(h)); } catch (e) { /* sin almacenamiento: el calendario no guarda */ }
+    if (window.Nube.usuario() && (((window.Nube.ficha() || {}).cal || {})[dia]) !== carta) window.Nube.guardarFicha({ cal: { [dia]: carta } }).catch(() => { /* queda en este dispositivo */ });
   }
   const sumarDias = (f, n) => { const [y, m, d] = f.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10); };
   const cal = { y: null, m: 0, sel: null };
@@ -882,11 +886,47 @@
     if (cambio) { try { localStorage.setItem(RECUP_K, JSON.stringify(r)); } catch (e) { /* sigue igual */ } }
     return cambio;
   }
+  /* Con sesión, el calendario, el mazo de la carta del día, las cartas vistas y los días recuperados viven en la cuenta:
+     al entrar desde otro dispositivo se juntan con lo de este (si una fecha difiere, manda la cuenta). Una vez por visita. */
+  let sincronizadoUid = null;
+  function sincronizarCuenta() {
+    const u = window.Nube.usuario(), f = window.Nube.ficha();
+    if (!u || !f || sincronizadoUid === u.uid) return;
+    sincronizadoUid = u.uid;
+    const subir = {};
+    // calendario
+    const local = leerHist(), nube = f.cal || {}, junto = Object.assign({}, local, nube), sube = {};
+    Object.keys(local).forEach((d) => { if (nube[d] === undefined && Number.isInteger(local[d])) sube[d] = local[d]; });
+    try { localStorage.setItem(HIST_K, JSON.stringify(junto)); } catch (e) { /* sin almacenamiento */ }
+    if (Object.keys(sube).length) subir.cal = sube;
+    // días recuperados de la semana
+    const rl = leerRecup(), rn = f.recup && f.recup.sem ? f.recup : null;
+    let rr = rl;
+    if (rn && rn.sem === rl.sem) rr = { sem: rl.sem, dias: Object.assign({}, rl.dias, rn.dias || {}) };
+    else if (rn && rn.sem > rl.sem) rr = { sem: rn.sem, dias: rn.dias || {} };
+    if (rn === null ? Object.keys(rr.dias).length : JSON.stringify(rr) !== JSON.stringify(rn)) subir.recup = rr;
+    try { localStorage.setItem(RECUP_K, JSON.stringify(rr)); } catch (e) { /* sigue igual */ }
+    // mazo de la carta del día: manda la cuenta; si no tiene, se sube el de este dispositivo
+    try {
+      const k = 'arcana.hoy.mazo.' + u.uid;
+      if (f.mazoHoy) localStorage.setItem(k, f.mazoHoy); else if (localStorage.getItem(k)) subir.mazoHoy = localStorage.getItem(k);
+    } catch (e) { /* sigue igual */ }
+    // cartas vistas: se suman
+    try {
+      const lv = JSON.parse(localStorage.getItem('arcana.cartas.vistas.v1')) || [], nv = f.vistas || [], u2 = [...new Set([...lv, ...nv])];
+      localStorage.setItem('arcana.cartas.vistas.v1', JSON.stringify(u2));
+      if (u2.length !== nv.length) subir.vistas = u2;
+    } catch (e) { /* sigue igual */ }
+    if (Object.keys(subir).length) window.Nube.guardarFicha(subir).catch(() => { /* sin reglas nuevas: queda en este dispositivo */ });
+    pintarCalendario(); document.dispatchEvent(new CustomEvent('arcana:mazohoy'));
+  }
+  window.Nube.alCambiarUsuario((u) => { if (!u) sincronizadoUid = null; else sincronizarCuenta(); });
   async function recuperar(fechas) {
     const u = window.Nube.usuario(); if (!u) { irEntrar('Entra a tu cuenta para recuperar tus días.'); return; }
     const r = leerRecup();
     for (const f of fechas) { const id = await cartaDeDia(u.uid, f); anotarDia(f, id); r.dias[f] = id; }
     try { localStorage.setItem(RECUP_K, JSON.stringify(r)); } catch (e) { /* sigue igual */ }
+    window.Nube.guardarFicha({ recup: r }).catch(() => { /* queda en este dispositivo */ });
     cal.sel = fechas[fechas.length - 1]; sfx.revelar(1); sfx.entrega(true); pintarCalendario();
     aviso(fechas.length === 1 ? 'Carta recuperada.' : `Listo: recuperaste ${fechas.length} días.`);
   }

@@ -156,7 +156,7 @@
     try {
       const s = await c.fs.getDoc(c.fs.doc(c.db, 'personas', u.uid));
       const p = s.exists() && PERFILES.includes(s.data().perfil) ? s.data().perfil : 'free';
-      if (s.exists()) { const d = s.data(); ficha = { nombre: d.nombre || '', avatar: d.avatar || null, hoy: d.hoy && typeof d.hoy === 'object' ? d.hoy : null, porPago: d.porPago === true, accesos: d.accesos || 0, creado: d.creado && d.creado.toDate ? d.creado.toDate() : null }; avisarU(); }
+      if (s.exists()) { const d = s.data(); ficha = { nombre: d.nombre || '', avatar: d.avatar || null, hoy: d.hoy && typeof d.hoy === 'object' ? d.hoy : null, cal: d.cal && typeof d.cal === 'object' ? d.cal : {}, mazoHoy: typeof d.mazoHoy === 'string' ? d.mazoHoy : '', vistas: Array.isArray(d.vistas) ? d.vistas : [], recup: d.recup && typeof d.recup === 'object' ? d.recup : null, porPago: d.porPago === true, accesos: d.accesos || 0, creado: d.creado && d.creado.toDate ? d.creado.toDate() : null }; avisarU(); }
       if (p !== miPerfil) { miPerfil = p; avisarF(); }
       guardarCuenta();
     } catch (e) { /* sin ficha o sin red: se queda con el plan recordado (o Free) */ }
@@ -243,8 +243,14 @@
       if ('nombre' in cambios) datos.nombre = String(cambios.nombre || '').slice(0, 80);
       if ('avatar' in cambios) datos.avatar = cambios.avatar ? cambios.avatar : c.fs.deleteField();
       if ('hoy' in cambios && cambios.hoy) datos.hoy = { dia: String(cambios.hoy.dia), carta: Number(cambios.hoy.carta) };
+      // calendario de la carta del día, mazo elegido, cartas vistas y días recuperados: se guardan en la cuenta para verlos igual en todos los dispositivos
+      if ('cal' in cambios && cambios.cal) Object.keys(cambios.cal).forEach((f) => { const v = cambios.cal[f]; if (/^\d{4}-\d{2}-\d{2}$/.test(f) && Number.isInteger(v) && v >= 0 && v <= 77) datos['cal.' + f] = v; });
+      if ('mazoHoy' in cambios) datos.mazoHoy = cambios.mazoHoy ? String(cambios.mazoHoy).slice(0, 20) : c.fs.deleteField();
+      if ('vistas' in cambios && Array.isArray(cambios.vistas)) datos.vistas = cambios.vistas.filter((x) => Number.isInteger(x) && x >= 0 && x <= 77).slice(0, 78);
+      if ('recup' in cambios && cambios.recup && typeof cambios.recup.sem === 'string') datos.recup = { sem: cambios.recup.sem.slice(0, 10), dias: Object.assign({}, cambios.recup.dias || {}) };
       await c.fs.updateDoc(c.fs.doc(c.db, 'personas', u.uid), datos);
-      ficha = Object.assign({}, ficha || {}, 'nombre' in cambios ? { nombre: datos.nombre } : {}, 'avatar' in cambios ? { avatar: cambios.avatar || null } : {}, 'hoy' in cambios && cambios.hoy ? { hoy: datos.hoy } : {});
+      const nuevaCal = 'cal' in cambios && cambios.cal ? { cal: Object.assign({}, (ficha && ficha.cal) || {}, cambios.cal) } : {};
+      ficha = Object.assign({}, ficha || {}, nuevaCal, 'mazoHoy' in cambios ? { mazoHoy: cambios.mazoHoy || '' } : {}, 'vistas' in cambios && Array.isArray(cambios.vistas) ? { vistas: datos.vistas } : {}, 'recup' in cambios && datos.recup ? { recup: datos.recup } : {}, 'nombre' in cambios ? { nombre: datos.nombre } : {}, 'avatar' in cambios ? { avatar: cambios.avatar || null } : {}, 'hoy' in cambios && cambios.hoy ? { hoy: datos.hoy } : {});
       avisarU();
     },
     async salir() { const c = await conectar(); if (c) await c.au.signOut(c.auth); },

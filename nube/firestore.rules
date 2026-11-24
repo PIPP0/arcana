@@ -119,14 +119,19 @@ service cloud.firestore {
         && (!('porPago' in request.resource.data) || request.resource.data.porPago == false);
       // Su propio nombre y avatar (un avatar entre cinco, o ninguno).
       allow update: if signedIn() && request.auth.uid == uid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nombre', 'avatar', 'hoy'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nombre', 'avatar', 'hoy', 'cal', 'mazoHoy', 'vistas', 'recup'])
         && (!('nombre' in request.resource.data) || (request.resource.data.nombre is string && request.resource.data.nombre.size() <= 80))
         && (!('avatar' in request.resource.data) || request.resource.data.avatar in ['sol', 'luna', 'estrella', 'sacerdotisa', 'mago'])
         && (!('hoy' in request.resource.data) || (request.resource.data.hoy is map && request.resource.data.hoy.keys().hasOnly(['dia', 'carta'])
             && request.resource.data.hoy.dia is string && request.resource.data.hoy.dia.size() == 10
-            && request.resource.data.hoy.carta is int && request.resource.data.hoy.carta >= 0 && request.resource.data.hoy.carta <= 77));
+            && request.resource.data.hoy.carta is int && request.resource.data.hoy.carta >= 0 && request.resource.data.hoy.carta <= 77))
+        // Calendario de su carta del día (fecha -> carta), mazo elegido, cartas ya vistas y días recuperados de la semana.
+        && (!('cal' in request.resource.data) || (request.resource.data.cal is map && request.resource.data.cal.size() <= 800))
+        && (!('mazoHoy' in request.resource.data) || (request.resource.data.mazoHoy is string && request.resource.data.mazoHoy.size() <= 20))
+        && (!('vistas' in request.resource.data) || (request.resource.data.vistas is list && request.resource.data.vistas.size() <= 78))
+        && (!('recup' in request.resource.data) || (request.resource.data.recup is map && request.resource.data.recup.keys().hasOnly(['sem', 'dias'])));
       allow update: if signedIn() && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(['nombre', 'email', 'creado', 'ultimoAcceso', 'accesos', 'perfil', 'avatar', 'hoy', 'porPago', 'mpId'])
+        && request.resource.data.keys().hasOnly(['nombre', 'email', 'creado', 'ultimoAcceso', 'accesos', 'perfil', 'avatar', 'hoy', 'cal', 'mazoHoy', 'vistas', 'recup', 'porPago', 'mpId'])
         && request.resource.data.get('perfil', null) == resource.data.get('perfil', null)
         && request.resource.data.get('porPago', null) == resource.data.get('porPago', null)
         && request.resource.data.get('mpId', null) == resource.data.get('mpId', null)
