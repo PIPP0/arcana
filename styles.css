@@ -873,3 +873,9 @@ html, body { overflow-x: clip; }
 .aviso-mazo { display: block; margin: 10px 0 2px; font-size: .78rem; line-height: 1.45; color: var(--lavanda); opacity: .85; }
 .aviso-mazo a { color: var(--oro); text-underline-offset: 3px; }
 .mazos-hoy { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+
+/* carta del día: texto más fácil de leer */
+.hoy-texto .tono { margin-top: 12px; font-family: var(--serif); font-style: italic; font-size: 1.3rem; line-height: 1.35; color: var(--oro-claro); }
+.hoy-texto .mensaje { margin-top: 12px; font-size: 1.1rem; line-height: 1.7; }
+.hoy-texto .mensaje p + p { margin-top: 8px; }
+.hoy-bloques p { line-height: 1.7; }
